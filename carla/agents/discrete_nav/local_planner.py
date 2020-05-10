@@ -24,7 +24,7 @@ F = 50 # number of past timesteps to remember for lane changing
 w = 0.4 # weight of Qv in lane change reward function
 theta_left = 2.0 # threshold to switch left
 theta_right = 2.0 # threshold to switch right
-eps = 50 # meters
+eps = 35 # meters
 
 class RoadOption(Enum):
     """
@@ -116,7 +116,7 @@ class LocalPlanner(object):
         self._sampling_radius = self._target_speed * 1 / 3.6  # 1 seconds horizon
         self._min_distance = self._sampling_radius * self.MIN_DISTANCE_PERCENTAGE
         args_lateral_dict = {
-            'K_P': 1.95,
+            'K_P': 0.4,#1.95,
             'K_D': 0.01,
             'K_I': 1.4,
             'dt': self._dt}
