@@ -22,7 +22,7 @@ class RoamingAgent(Agent):
     This agent respects traffic lights and other vehicles.
     """
 
-    def __init__(self, vehicle):
+    def __init__(self, dt, vehicle):
         """
 
         :param vehicle: actor to apply to local planner logic onto
@@ -30,7 +30,8 @@ class RoamingAgent(Agent):
         super(RoamingAgent, self).__init__(vehicle)
         self._proximity_threshold = 10.0  # meters
         self._state = AgentState.NAVIGATING
-        self._local_planner = LocalPlanner(self._vehicle, {'target_speed': random.uniform(15, 40)})
+        self._local_planner = LocalPlanner(self._vehicle, {'dt': dt,
+                                                           'target_speed': random.uniform(15, 40)})
 
     def run_step(self, debug=False):
         """
