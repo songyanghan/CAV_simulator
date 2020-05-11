@@ -76,7 +76,8 @@ def get_actor_display_name(actor, truncate=250):
 # ==============================================================================
 
 class World(object):
-    def __init__(self, carla_world, actor_filter, num_ego_vehicles):
+    def __init__(self, client, carla_world, actor_filter, num_ego_vehicles):
+        self.client = client
         self.world = carla_world
         self.map = self.world.get_map()
         self.num_ego_vehicles = num_ego_vehicles
@@ -141,10 +142,9 @@ class World(object):
         self.world.set_weather(preset[0])
 
     def destroy(self):
-        actors = self.players
-        for actor in actors:
-            if actor is not None:
-                actor.destroy()
+        self.client.apply_batch([carla.command.DestroyActor(player)
+                            for player in self.players
+                            if player is not None])
 
 
 # ==============================================================================
@@ -158,7 +158,7 @@ def game_loop(args):
         client = carla.Client(args.host, args.port)
         client.set_timeout(4.0)
 
-        world = World(client.load_world(args.map), args.filter, args.num_egos)
+        world = World(client, client.load_world(args.map), args.filter, args.num_egos)
         settings = world.world.get_settings()
         settings.synchronous_mode = True
         settings.fixed_delta_seconds = args.timestep
@@ -172,6 +172,9 @@ def game_loop(args):
             client.apply_batch(
                 [carla.command.ApplyVehicleControl(agent._vehicle, agent.run_step())
                 for agent in agents])
+
+    except IndexError:
+        print('Died due to IndexError bug')
 
     finally:
         if world is not None:
@@ -221,8 +224,8 @@ def main():
     argparser.add_argument(
         '--filter',
         metavar='PATTERN',
-        default='vehicle.*',
-        help='actor filter (default: "vehicle.*")')
+        default='vehicle.audi.tt',
+        help='actor filter (default: "vehicle.audi.tt")')
     args = argparser.parse_args()
 
     log_level = logging.DEBUG if args.debug else logging.INFO
