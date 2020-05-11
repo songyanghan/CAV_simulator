@@ -32,14 +32,18 @@ def draw_waypoints(world, waypoints, z=0.5):
         world.debug.draw_arrow(begin, end, arrow_size=0.3, life_time=0.6)
 
 
-def get_speed(vehicle):
+def get_speed(vehicle, no_z = False):
     """
     Compute speed of a vehicle in Kmh
     :param vehicle: the vehicle for which speed is calculated
+    :param no_z: use x and y components only
     :return: speed as a float in Kmh
     """
     vel = vehicle.get_velocity()
-    return 3.6 * math.sqrt(vel.x ** 2 + vel.y ** 2 + vel.z ** 2)
+    if no_z:
+        return 3.6 * math.sqrt(vel.x ** 2 + vel.y ** 2)
+    else:
+        return 3.6 * math.sqrt(vel.x ** 2 + vel.y ** 2 + vel.z ** 2)
 
 
 def is_within_distance_ahead(target_transform, current_transform, max_distance):
@@ -106,3 +110,12 @@ def vector(location_1, location_2):
     norm = np.linalg.norm([x, y, z]) + np.finfo(float).eps
 
     return [x / norm, y / norm, z / norm]
+
+def norm(v):
+    return (v.x**2 + v.y**2 + v.z**2)**0.5
+
+def dot(u, v):
+    return u.x*v.x + u.y*v.y + u.z*v.z
+
+def scalar_proj(u, v):
+    return dot(u, v) / norm(v)
