@@ -202,12 +202,10 @@ class LocalPlanner(object):
 
                 ego = self._vehicle
                 current_waypoint = self._map.get_waypoint(ego.get_location())
-                # TODO: use all future velocities, not just current velocity
                 Qv_current = 0
                 Qv_left = 0
                 Qv_right = 0
 
-                # DEBUG: Epsilon distance is physical distance not longitudinal
                 current_eps_neighbors = []
                 left_eps_neighbors = []
                 right_eps_neighbors = []

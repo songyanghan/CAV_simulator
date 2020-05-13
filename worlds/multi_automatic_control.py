@@ -131,9 +131,8 @@ class World(object):
                 self.destroy()
                 self.players[i] = self.world.try_spawn_actor(blueprint, spawn_points[i])
             while self.players[i] is None:
-                print(str(spawn_points[i].location))
                 self.players[i] = self.world.try_spawn_actor(blueprint, spawn_points[i])
-        actor_type = get_actor_display_name(self.players[0])
+        actor_type = get_actor_display_name(self.players[0]) # DEBUG: Delete junk line
 
     def next_weather(self, reverse=False):
         self._weather_index += -1 if reverse else 1
@@ -158,13 +157,20 @@ def game_loop(args):
         client = carla.Client(args.host, args.port)
         client.set_timeout(4.0)
 
-        world = World(client, client.load_world(args.map), args.filter, args.num_egos)
+        world = World(client, client.load_world(args.map), args.filter, args.n_connected)
         settings = world.world.get_settings()
         settings.synchronous_mode = True
         settings.fixed_delta_seconds = args.timestep
         world.world.apply_settings(settings)
 
-        agents = [RoamingAgent(args.timestep, player) for player in world.players]
+        # TODO: Make distribution more realistic. Do research
+        agents = []
+        for i, player in enumerate(world.players):
+            target_speed = random.uniform(65, 115)
+            agents.append(RoamingAgent(args.timestep, target_speed, player))
+            print('Spawned actor', player.id, 'at',
+                  str(player.get_transform().location), 'target speed',
+                  target_speed, 'Kph')
 
         while True:
             world.world.tick()
@@ -217,10 +223,10 @@ def main():
         type=str,
         help='map name (default: Town05)')
     argparser.add_argument(
-        '-e', '--num_egos',
+        '-c', '--n_connected',
         default=6,
         type=int,
-        help='number of policy-controlled ego vehicles (default: 6)')
+        help='number of connected (algorithm-controlled) autonomous vehicles (default: 15)')
     argparser.add_argument(
         '--filter',
         metavar='PATTERN',
