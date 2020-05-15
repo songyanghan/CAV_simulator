@@ -88,7 +88,7 @@ class World(object):
         self.restart()
 
     def restart(self):
-        blueprints = self.world.get_blueprint_library().filter(self._actor_filter)
+        self.destroy()
 
         spawn_points = []
         if self.map.name == 'Town05':
@@ -110,11 +110,13 @@ class World(object):
                     transform = self.map.get_waypoint(carla.Location(x=x, y=y)).transform
                     transform.location.z = transform.location.z + 2.0
                     spawn_points.append(transform)
-
         else:
             spawn_points = self.map.get_spawn_points()
         spawn_points = random.sample(spawn_points, self.num_ego_vehicles)
 
+        blueprints = self.world.get_blueprint_library().filter(self._actor_filter)
+
+        batch = []
         for i in range(0, self.num_ego_vehicles):
             # Get a random blueprint.
             blueprint = random.choice(blueprints)
@@ -122,17 +124,8 @@ class World(object):
             if blueprint.has_attribute('color'):
                 color = random.choice(blueprint.get_attribute('color').recommended_values)
                 blueprint.set_attribute('color', color)
-            # Spawn the player.
-            if self.players[i] is not None:
-                spawn_point = self.players[i].get_transform()
-                spawn_point.location.z += 2.0
-                spawn_point.rotation.roll = 0.0
-                spawn_point.rotation.pitch = 0.0
-                self.destroy()
-                self.players[i] = self.world.try_spawn_actor(blueprint, spawn_points[i])
-            while self.players[i] is None:
-                self.players[i] = self.world.try_spawn_actor(blueprint, spawn_points[i])
-        actor_type = get_actor_display_name(self.players[0]) # DEBUG: Delete junk line
+            batch.append(carla.command.SpawnActor(blueprint, spawn_points[i]))
+        self.players = [self.world.get_actor(response.actor_id) for response in self.client.apply_batch_sync(batch)]
 
     def next_weather(self, reverse=False):
         self._weather_index += -1 if reverse else 1
@@ -142,8 +135,8 @@ class World(object):
 
     def destroy(self):
         self.client.apply_batch([carla.command.DestroyActor(player)
-                            for player in self.players
-                            if player is not None])
+                                 for player in self.players
+                                 if player is not None])
 
 
 # ==============================================================================
@@ -165,18 +158,15 @@ def game_loop(args):
 
         # TODO: Make distribution more realistic. Do research
         agents = []
-        for i, player in enumerate(world.players):
-            target_speed = random.uniform(65, 115)
+        for player in world.players:
+            target_speed = random.uniform(50, 100)
             agents.append(RoamingAgent(args.timestep, target_speed, player))
-            print('Spawned actor', player.id, 'at',
-                  str(player.get_transform().location), 'target speed',
-                  target_speed, 'Kph')
 
         while True:
             world.world.tick()
 
             client.apply_batch(
-                [carla.command.ApplyVehicleControl(agent._vehicle, agent.run_step())
+                [carla.command.ApplyVehicleControl(agent._vehicle, agent.run_step(debug=True))
                 for agent in agents])
 
     except IndexError:
@@ -185,6 +175,7 @@ def game_loop(args):
     finally:
         if world is not None:
             world.destroy()
+            world.world.tick()
 
 
 # ==============================================================================
@@ -213,10 +204,10 @@ def main():
         help='TCP port to listen to (default: 2000)')
     argparser.add_argument(
         '-t', '--timestep',
+        metavar='DT',
         default=0.05,
         type=float,
-        help='simulation timestep length in seconds (default: 0.5)'
-    )
+        help='simulation timestep length in seconds (default: 0.05)')
     argparser.add_argument(
         '-m', '--map',
         default='Town05',
@@ -224,9 +215,10 @@ def main():
         help='map name (default: Town05)')
     argparser.add_argument(
         '-c', '--n_connected',
+        metavar='C',
         default=6,
         type=int,
-        help='number of connected (algorithm-controlled) autonomous vehicles (default: 15)')
+        help='number of connected (algorithm-controlled) autonomous vehicles (default: 6)')
     argparser.add_argument(
         '--filter',
         metavar='PATTERN',

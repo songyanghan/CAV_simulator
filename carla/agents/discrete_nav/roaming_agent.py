@@ -11,6 +11,7 @@ The agent also responds to traffic lights. """
 
 from agents.discrete_nav.agent import Agent, AgentState
 from agents.discrete_nav.local_planner import LocalPlanner
+from agents.tools.misc import get_speed
 from numpy import random
 
 
@@ -28,9 +29,10 @@ class RoamingAgent(Agent):
         :param vehicle: actor to apply to local planner logic onto
         """
         super(RoamingAgent, self).__init__(vehicle)
-        self._proximity_threshold = 10.0  # meters
         self._state = AgentState.NAVIGATING
+        self._dt = dt
         self._target_speed = target_speed
+        self._proximity_threshold = stopping_distance(self._target_speed)#10.0 # DEBUG:
         self._local_planner = LocalPlanner(self._vehicle, {'dt': dt,
                                                            'target_speed': target_speed})
 
@@ -42,6 +44,7 @@ class RoamingAgent(Agent):
 
         # is there an obstacle in front of us?
         hazard_detected = False
+        self._proximity_threshold = stopping_distance(get_speed(self._vehicle))
 
         # retrieve relevant elements for safe navigation, i.e.: traffic lights
         # and other vehicles
@@ -53,29 +56,19 @@ class RoamingAgent(Agent):
         vehicle_state, vehicle = self._is_vehicle_hazard(vehicle_list)
         if vehicle_state:
             if debug:
-                print('!!! VEHICLE BLOCKING AHEAD [{}])'.format(vehicle.id))
+                print('!!! VEHICLE BLOCKING AHEAD [{}])'.format(vehicle.id), self._vehicle.get_transform().location.distance(vehicle.get_transform().location))
 
             self._state = AgentState.BLOCKED_BY_VEHICLE
-            hazard_detected = True
-
-        # check for the state of the traffic lights
-        light_state, traffic_light = self._is_light_red(lights_list)
-        if light_state:
-            if debug:
-                print('=== RED LIGHT AHEAD [{}])'.format(traffic_light.id))
-
-            self._state = AgentState.BLOCKED_RED_LIGHT
             hazard_detected = True
 
         if hazard_detected:
             control = self.emergency_stop()
         else:
-
-            # communication with other vehicles
-
-
             self._state = AgentState.NAVIGATING
-            # standard local planner behavior
-            control = self._local_planner.run_step()
+            control = self._local_planner.run_step(debug)
 
         return control
+
+# DEBUG: stopping distance taken from https://korkortonline.se/en/theory/reaction-braking-stopping/
+def stopping_distance(speed):
+    return speed**2 / 200.0  # meters

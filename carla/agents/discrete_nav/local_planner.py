@@ -18,13 +18,12 @@ from agents.discrete_nav.controller import VehiclePIDController
 from agents.tools.misc import distance_vehicle, draw_waypoints
 
 
-Tds = 10 #Number of timesteps to check discrete state switching
-T = 1 #Number of timesteps to share future data for - NOT USED YET
+Tds = 10 #Number of timesteps to check behavior planner
 F = 50 # number of past timesteps to remember for lane changing
 w = 0.4 # weight of Qv in lane change reward function
 theta_left = 2.0 # threshold to switch left
 theta_right = 2.0 # threshold to switch right
-eps = 35 # meters
+eps = 75 # meters # TODO: Google DSRC?
 
 class RoadOption(Enum):
     """
@@ -85,9 +84,13 @@ class LocalPlanner(object):
         self._next_waypoints = None
         self.target_waypoint = None
         self._vehicle_controller = None
-        # queue with tuples of (waypoint, RoadOption)
+
+        # course charted by path planner
+        # contains tuples of (waypoint, RoadOption)
         self._waypoints_queue = deque(maxlen=20000)
         self._buffer_size = 5
+        # immediate next few waypoints in the planned path (helpful for
+        # controllers like MPC which use the next several reference states)
         self._waypoint_buffer = deque(maxlen=self._buffer_size)
 
         # initializing controller
@@ -116,7 +119,7 @@ class LocalPlanner(object):
         self._sampling_radius = self._target_speed * 1 / 3.6  # 1 seconds horizon
         self._min_distance = self._sampling_radius * self.MIN_DISTANCE_PERCENTAGE
         args_lateral_dict = {
-            'K_P': 0.4,#1.95,
+            'K_P': 0.4, #1.95
             'K_D': 0.01,
             'K_I': 1.4,
             'dt': self._dt}
@@ -194,87 +197,72 @@ class LocalPlanner(object):
 
     def run_step(self, debug=True):
         change_lane = False
-        if self._switch_timestep == Tds - 1: #time cycle to evaluate switching options
+        if self._switch_timestep == Tds - 1:
 
             if self._target_road_option == RoadOption.LANEFOLLOW and self.target_waypoint:
+                ego = self._vehicle
+                current_waypoint = self._map.get_waypoint(ego.get_location())
                 left_waypt = self.target_waypoint.get_left_lane()
                 right_waypt = self.target_waypoint.get_right_lane()
 
-                ego = self._vehicle
-                current_waypoint = self._map.get_waypoint(ego.get_location())
-                Qv_current = 0
-                Qv_left = 0
-                Qv_right = 0
-
-                current_eps_neighbors = []
-                left_eps_neighbors = []
-                right_eps_neighbors = []
+                # l / c / r = in the Left / Current / Right lane from ego vehicle
+                Qv_l, Qv_c, Qv_r = [], [], []
 
                 #### GET VELOCITIES FROM EPS NEIGHBORS ####
                 for other in ego.get_world().get_actors().filter('*vehicle*'):
+                    # must be a different vehicle
                     if ego.id == other.id:
                         continue
 
-                    other_waypoint = self._map.get_waypoint(other.get_location())
+                    other_loc = other.get_location()
+                    other_waypoint = self._map.get_waypoint(other_loc)
+
+                    # must be on the same segment of road as ego vehicle
                     if other_waypoint.road_id != current_waypoint.road_id:
                         continue
 
-                    if (other_waypoint.lane_id == current_waypoint.lane_id
-                        and ego.get_location().distance(other.get_location()) < eps):
-                            current_eps_neighbors.append(other)
-                            # DEBUG: This is from the CARLA client not the controller
-                            fwd_speed = scalar_proj(other.get_velocity(), other_waypoint.transform.get_forward_vector())
-                            Qv_current = Qv_current + fwd_speed
+                    loc = ego.get_location()
+                    fwd = current_waypoint.transform.get_forward_vector()
+                    other_fwd_speed = scalar_proj(other.get_velocity(),
+                                                  other_waypoint.transform.get_forward_vector())
 
-                    elif (left_waypt
-                        and other_waypoint.lane_id == left_waypt.lane_id
-                        and ego.get_location().distance(other.get_location()) < eps):
-                            left_eps_neighbors.append(other)
-                            fwd_speed = scalar_proj(other.get_velocity(), other_waypoint.transform.get_forward_vector())
-                            Qv_left = Qv_left + fwd_speed
+                    # must be within eps and ahead of ego vehicle on the road
+                    if loc.distance(other_loc) < eps and dot(loc - other_loc, fwd) <= 0:
+                        if other_waypoint.lane_id == current_waypoint.lane_id:
+                            Qv_c.append(other_fwd_speed)
+                        elif left_waypt and other_waypoint.lane_id == left_waypt.lane_id:
+                            Qv_l.append(other_fwd_speed)
+                        elif right_waypt and other_waypoint.lane_id == right_waypt.lane_id:
+                            Qv_r.append(other_fwd_speed)
 
-                    elif (right_waypt
-                        and other_waypoint.lane_id == right_waypt.lane_id
-                        and ego.get_location().distance(other.get_location()) < eps):
-                            right_eps_neighbors.append(other)
-                            fwd_speed = scalar_proj(other.get_velocity(), other_waypoint.transform.get_forward_vector())
-                            Qv_right = Qv_right + fwd_speed
-
-                # TODO: Make this param
-                Qv_current = Qv_current / len(current_eps_neighbors) if current_eps_neighbors else 0.9*self._target_speed
-                Qv_left = Qv_left / len(left_eps_neighbors) if left_eps_neighbors else 0.9*self._target_speed
-                Qv_right = Qv_right / len(right_eps_neighbors) if right_eps_neighbors else 0.9*self._target_speed
-                # DEBUG: default values of Qv if no neighbors?
+                Qv_c = sum(Qv_c)/len(Qv_c) if Qv_c else 0.9*self._target_speed
+                Qv_l = sum(Qv_l)/len(Qv_l) if Qv_l else 0.9*self._target_speed
+                Qv_r = sum(Qv_r)/len(Qv_r) if Qv_r else 0.9*self._target_speed
                 #### GET VELOCITIES FROM EPS NEIGHBORS ####
 
-                # DEBUG: simplify to one param. w*Qv - Qf >= 0
-                rCL = w*(Qv_left - Qv_current) - self.Qf
-                rCR = w*(Qv_right - Qv_current) - self.Qf
+                rCL = w*(Qv_l - Qv_c) - self.Qf
+                rCR = w*(Qv_r - Qv_c) - self.Qf
 
-                # DEBUG: Default to left change over right change, right?
-                # DEBUG: Why look at cars behind when calculating Qv?
-                # DEBUG: Just use closest car in front, not all cars? (This is due to only using next velocity)
-                # DEBUG: Certain drivers just want to go slow... they shouldn't switch if they won't speed up
-                if (left_waypt
-                    and str(current_waypoint.lane_change) in {'Left', 'Both'}
-                    and rCL >= theta_left):
+                if (left_waypt and rCL >= theta_left
+                    and str(current_waypoint.lane_change) in {'Left', 'Both'}):
                         # TODO: Safety checking with cts controller
                         change_lane = True
                         self._waypoint_buffer.clear()
                         self._waypoints_queue.clear()
                         self._waypoints_queue.append((left_waypt.next(3.0)[0], RoadOption.CHANGELANELEFT))
-                        print('Ego', ego.id, 'Qv_current', Qv_current, 'Qv_left', Qv_left, 'Qf', self.Qf)
-                        print('Ego', ego.id, 'CHANGE' , current_waypoint.lane_id, 'into', left_waypt.lane_id)
+                        if debug:
+                            print('Ego', ego.id, 'Qv_current', Qv_c, 'Qv_left', Qv_l, 'Qf', self.Qf)
+                            print('Ego', ego.id, 'CHANGE LEFT' , current_waypoint.lane_id, 'into', left_waypt.lane_id)
 
-                elif (right_waypt
-                    and str(current_waypoint.lane_change) in {'Right', 'Both'}
-                    and rCR >= theta_right):
+                elif (right_waypt and rCR >= theta_right
+                    and str(current_waypoint.lane_change) in {'Right', 'Both'}):
                         change_lane = True
                         self._waypoint_buffer.clear()
                         self._waypoints_queue.clear()
                         self._waypoints_queue.append((right_waypt.next(3.0)[0], RoadOption.CHANGELANERIGHT))
-                        print('Ego', ego.id, 'Qv_current', Qv_current, 'Qv_right', Qv_right, 'Qf', self.Qf)
-                        print('Ego', ego.id, 'CHANGE' , current_waypoint.lane_id, 'into', right_waypt.lane_id)
+                        if debug:
+                            print('Ego', ego.id, 'Qv_current', Qv_c, 'Qv_right', Qv_r, 'Qf', self.Qf)
+                            print('Ego', ego.id, 'CHANGE RIGHT' , current_waypoint.lane_id, 'into', right_waypt.lane_id)
 
             elif self._target_road_option == RoadOption.CHANGELANELEFT:
                 pass
