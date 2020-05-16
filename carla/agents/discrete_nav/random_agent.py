@@ -15,12 +15,14 @@ from agents.discrete_nav.agent import Agent, AgentState
 from agents.discrete_nav.local_planner import RoadOption, LocalPlanner
 from agents.tools.misc import is_within_distance_ahead, scalar_proj
 
+
 Tds = 10 #Number of timesteps to check behavior planner
 F = 50 # number of past timesteps to remember for lane changing
 w = 0.4 # weight of Qv in lane change reward function
 theta_left = 2.0 # threshold to switch left
 theta_right = 2.0 # threshold to switch right
 eps = 150 # meters # TODO: Google DSRC?
+theta_a = 2.0 # meters/sec^2 # threshold above which acceleration is "uncomfortable"
 
 
 class RandomAgent(Agent):
@@ -33,7 +35,7 @@ class RandomAgent(Agent):
 
         :param vehicle: actor to apply to local planner logic onto
         """
-        super(RandomAgent, self).__init__(vehicle)
+        super(RandomAgent, self).__init__(vehicle, dt)
         self.dt = dt
         self.target_speed = target_speed
         self.local_planner = LocalPlanner(self.vehicle, {'dt': dt,
@@ -45,8 +47,8 @@ class RandomAgent(Agent):
         self.hazard_c = False
         self.hazard_r = False
 
-        self.p_l = 0.1
-        self.p_r = 0.1
+        self.p_l = 0.025
+        self.p_r = 0.025
 
     def detect_nearby_vehicles(self):
         left_waypt = self.current_waypoint.get_left_lane()
@@ -95,7 +97,9 @@ class RandomAgent(Agent):
         Execute one step of navigation.
         :return: carla.VehicleControl
         """
+        self.t += self.dt # TODO: Call super run_step first maybe?
         self.current_waypoint = self.map.get_waypoint(self.vehicle.get_location())
+
         self.detect_nearby_vehicles()
 
         if self.hazard_c:

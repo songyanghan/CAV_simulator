@@ -23,7 +23,7 @@ import random
 import re
 import sys
 import weakref
-import time
+from statistics import mean
 
 try:
     import numpy as np
@@ -151,6 +151,8 @@ class World(object):
 
 def game_loop(args):
     world = None
+    timestamp = datetime.datetime.now()
+    filename = 'c%du%d_%s.txt' % (args.cavs, args.ucavs, timestamp)
 
     try:
         client = carla.Client(args.host, args.port)
@@ -164,23 +166,54 @@ def game_loop(args):
 
         agents = []
         for vehicle in world.CAVs:
-            # TODO: Make distribution more realistic. Do research
-            target_speed = random.uniform(50, 100)
+            target_speed = random.uniform(50, 100) # TODO: Make distribution more realistic. Do research
             agents.append(RoamingAgent(args.timestep, target_speed, vehicle))
         for vehicle in world.UCAVs:
-            target_speed = random.uniform(50, 100)
+            target_speed = random.uniform(50, 100) # TODO: Make distribution more realistic. Do research
             agents.append(RandomAgent(args.timestep, target_speed, vehicle))
 
+        with open(filename, 'a') as outfile:
+            print('Simulation_Start:', timestamp, file=outfile)
+            print('Arguments:', args, file=outfile)
+            print('Traffic_Density:', (args.cavs + args.ucavs) / course_len, file=outfile)
+            print('Avg_Velocity', 'Avg_Comfort_Cost', file=outfile)
 
-        while True:
-            world.world.tick()
+            while True:
+                world.world.tick()
 
-            client.apply_batch(
-                [carla.command.ApplyVehicleControl(agent.vehicle, agent.run_step(debug=True))
-                for agent in agents])
+                client.apply_batch(
+                    [carla.command.ApplyVehicleControl(agent.vehicle, agent.run_step(debug=True))
+                    for agent in agents])
+
+                t, v_fwds, comfort_costs = zip(*[agent.get_measurements() for agent in agents])
+                print(mean(v_fwds), mean(comfort_costs), file=outfile)
 
     except IndexError:
         print('Died due to IndexError bug')
+
+    except KeyboardInterrupt:
+        print('Cancelled by user. Saving data and exiting!')
+
+        total_steps = 0
+        mean_v_sum, mean_cc_sum = 0, 0
+
+        with open(filename, 'r') as infile:
+            infile.readline()
+            infile.readline()
+            density = float(infile.readline().split()[1])
+            infile.readline()
+            line = infile.readline()
+            while line:
+                total_steps += 1
+                line = line.split()
+                mean_v_sum += float(line[0])
+                mean_cc_sum += float(line[1])
+                line = infile.readline()
+
+        print('Total Timesteps:', total_steps)
+        # TOTAL distance traveled per unit time by all vehicles
+        print('Length x Traffic Flow:', mean_v_sum / total_steps * density)
+        print('Average Driving Comfort Cost:', mean_cc_sum / total_steps)
 
     finally:
         if world is not None:
@@ -249,12 +282,7 @@ def main():
 
     print(__doc__)
 
-    try:
-
-        game_loop(args)
-
-    except KeyboardInterrupt:
-        print('\nCancelled by user. Bye!')
+    game_loop(args)
 
 
 if __name__ == '__main__':
