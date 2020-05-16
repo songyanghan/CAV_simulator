@@ -45,6 +45,7 @@ class RoamingAgent(Agent):
         self.local_planner = LocalPlanner(self.vehicle, {'dt': dt,
                                                          'target_speed': target_speed})
 
+        self.switcher_step = 0  # cycles through 0, 1, ..., (Tds - 1) each timestep
         self.proximity_threshold = 15.0  # meters
         self.hazard_l = False
         self.hazard_c = False
@@ -129,55 +130,42 @@ class RoamingAgent(Agent):
         :return: carla.VehicleControl
         """
         self.current_waypoint = self.map.get_waypoint(self.vehicle.get_location())
-        # check for vehicle hazards and receive information from neighboring vehicles
         self.detect_nearby_vehicles()
 
-        # TODO: Implement switch timesteps. But, do we want to call e-brake option only once every N steps?
-        change_lane = False
-        # print(self.vehicle.id, self.discrete_state())
+        if self.hazard_c:
+            self.state = AgentState.BLOCKED_BY_VEHICLE
+            return self.emergency_stop()
 
-        if self.discrete_state() == RoadOption.LANEFOLLOW and self.local_planner.target_waypoint:
-            # Initiate left change
-            if (self.rCL >= theta_left
-                and str(self.current_waypoint.lane_change) in {'Left', 'Both'}
-                and not self.hazard_l):
+        if (self.switcher_step == Tds - 1
+            self.discrete_state() == RoadOption.LANEFOLLOW
+            and self.local_planner.target_waypoint):
 
-                    self.state = AgentState.NAVIGATING
-                    change_lane = True
-
-                    self.local_planner.begin_change_left()
-                    control = self.local_planner.run_step()
-
-            # Initiate right change
-            elif (self.rCR >= theta_right
-                  and str(self.current_waypoint.lane_change) in {'Right', 'Both'}
-                  and not self.hazard_r):
-
-                    self.state = AgentState.NAVIGATING
-                    change_lane = True
-
-                    self.local_planner.begin_change_right()
-                    control = self.local_planner.run_step()
-
-            # Can't change lanes or go forward
-            elif self.hazard_c:
-                self.state = AgentState.BLOCKED_BY_VEHICLE
-                control = self.emergency_stop() # TODO: This control should not be replaced by other options if control is called at the very end. Also, want this called every timestep even if switching isn't done every step
-
-            # Continue navigating forward
-            else:
                 self.state = AgentState.NAVIGATING
-                control = self.local_planner.run_step()
+                change_lane = False
 
-        else: #state is not currently LaneFollowing
-            self.state = AgentState.NAVIGATING
-            control = self.local_planner.run_step()
+                # Check if we can change left
+                if (self.rCL >= theta_left
+                    and str(self.current_waypoint.lane_change) in {'Left', 'Both'}
+                    and not self.hazard_l):
 
-        # Update Qf and save most recent change_lane value
-        self.Qf = self.Qf - self.change_buf.get() + change_lane
-        self.change_buf.put(change_lane)
+                        change_lane = True
+                        self.local_planner.set_lane_left()
 
-        return control
+                # Check if we can change right
+                elif (self.rCR >= theta_right
+                      and str(self.current_waypoint.lane_change) in {'Right', 'Both'}
+                      and not self.hazard_r):
+
+                        change_lane = True
+                        self.local_planner.set_lane_right()
+
+            # Update Qf and save most recent change_lane value
+            self.Qf = self.Qf - self.change_buf.get() + change_lane
+            self.change_buf.put(change_lane)
+
+        self.switcher_step = (self.switcher_step + 1) % Tds
+        return self.local_planner.run_step()
+
 
 def norm(v):
     return (v.x**2 + v.y**2 + v.z**2)**0.5

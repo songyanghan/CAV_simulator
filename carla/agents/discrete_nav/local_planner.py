@@ -154,7 +154,7 @@ class LocalPlanner(object):
         # fill waypoint trajectory queue
         self._compute_next_waypoints(k=200)
 
-    def begin_change_left(self, debug=True):
+    def set_lane_left(self, debug=True):
         current_waypoint = self._map.get_waypoint(self._vehicle.get_location())
         left_waypt = current_waypoint.get_left_lane()
 
@@ -164,7 +164,7 @@ class LocalPlanner(object):
         if debug:
             print('Ego', self._vehicle.id, 'CHANGE LEFT from lane', current_waypoint.lane_id,'into', left_waypt.lane_id)
 
-    def begin_change_right(self, debug=True):
+    def set_lane_right(self, debug=True):
         current_waypoint = self._map.get_waypoint(self._vehicle.get_location())
         right_waypt = current_waypoint.get_right_lane()
 
