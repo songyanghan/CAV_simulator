@@ -18,13 +18,6 @@ from agents.discrete_nav.controller import VehiclePIDController
 from agents.tools.misc import draw_waypoints
 
 
-# Tds = 10 #Number of timesteps to check behavior planner
-# F = 50 # number of past timesteps to remember for lane changing
-# w = 0.4 # weight of Qv in lane change reward function
-# theta_left = 2.0 # threshold to switch left
-# theta_right = 2.0 # threshold to switch right
-# eps = 150 # meters # TODO: Google DSRC?
-
 class RoadOption(Enum):
     """
     RoadOption represents the possible topological configurations when moving from a segment of lane to other.
@@ -66,10 +59,6 @@ class LocalPlanner(object):
         """
         self._vehicle = vehicle
         self._map = self._vehicle.get_world().get_map()
-
-        # self._discrete_state = None
-        # self._change_buffer = Queue(maxsize=F)
-        # self.Qf = 0
 
         self._dt = None
         self._target_speed = None
@@ -138,9 +127,6 @@ class LocalPlanner(object):
                 args_lateral_dict = opt_dict['lateral_control_dict']
             if 'longitudinal_control_dict' in opt_dict:
                 args_longitudinal_dict = opt_dict['longitudinal_control_dict']
-
-        # while not self._change_buffer.full():
-        #     self._change_buffer.put(False)
 
         self._current_waypoint = self._map.get_waypoint(self._vehicle.get_location())
         self._vehicle_controller = VehiclePIDController(self._vehicle,
@@ -212,97 +198,6 @@ class LocalPlanner(object):
                     road_option)]
 
             self._waypoints_queue.append((next_waypoint, road_option))
-
-    # def run_step(self, debug=True):
-    #     change_lane = False
-    #     if self._switch_timestep == Tds - 1:
-    #
-    #         if self._target_road_option == RoadOption.LANEFOLLOW and self.target_waypoint:
-    #             ego = self._vehicle
-    #             current_waypoint = self._map.get_waypoint(ego.get_location())
-    #             left_waypt = self.target_waypoint.get_left_lane() # TODO: target.next.left() to stabilize lane changes?
-    #             right_waypt = self.target_waypoint.get_right_lane() # TODO: target.next.right()
-    #
-    #             # l / c / r = in the Left / Current / Right lane from ego vehicle
-    #             Qv_l, Qv_c, Qv_r = [], [], []
-    #
-    #             #### GET VELOCITIES FROM EPS NEIGHBORS ####
-    #             for other in ego.get_world().get_actors().filter('*vehicle*'):
-    #                 # must be a different vehicle
-    #                 if ego.id == other.id:
-    #                     continue
-    #
-    #                 other_loc = other.get_location()
-    #                 other_waypoint = self._map.get_waypoint(other_loc)
-    #
-    #                 # must be on the same segment of road as ego vehicle
-    #                 if other_waypoint.road_id != current_waypoint.road_id:
-    #                     continue
-    #
-    #                 loc = ego.get_location()
-    #                 fwd = current_waypoint.transform.get_forward_vector()
-    #                 other_fwd_speed = scalar_proj(other.get_velocity(),
-    #                                               other_waypoint.transform.get_forward_vector())
-    #
-    #                 # must be within eps and ahead of ego vehicle on the road
-    #                 if loc.distance(other_loc) < eps and dot(loc - other_loc, fwd) <= 0:
-    #                     if other_waypoint.lane_id == current_waypoint.lane_id:
-    #                         Qv_c.append(other_fwd_speed)
-    #                     elif left_waypt and other_waypoint.lane_id == left_waypt.lane_id:
-    #                         Qv_l.append(other_fwd_speed)
-    #                     elif right_waypt and other_waypoint.lane_id == right_waypt.lane_id:
-    #                         Qv_r.append(other_fwd_speed)
-    #             #### GET VELOCITIES FROM EPS NEIGHBORS ####
-    #
-    #             Qv_c = sum(Qv_c)/len(Qv_c) if Qv_c else 0.9*self._target_speed
-    #             Qv_l = sum(Qv_l)/len(Qv_l) if Qv_l else 0.9*self._target_speed
-    #             Qv_r = sum(Qv_r)/len(Qv_r) if Qv_r else 0.9*self._target_speed
-    #
-    #             rCL = w*(Qv_l - Qv_c) - self.Qf
-    #             rCR = w*(Qv_r - Qv_c) - self.Qf
-    #
-    #             if (left_waypt and rCL >= theta_left
-    #                 and str(current_waypoint.lane_change) in {'Left', 'Both'}):
-    #                     # TODO: Safety checking with cts controller
-    #                     change_lane = True
-    #                     self._waypoint_buffer.clear()
-    #                     self._waypoints_queue.clear()
-    #                     self._waypoints_queue.append((left_waypt.next(3.0)[0], RoadOption.CHANGELANELEFT)) # TODO: Note this horizon
-    #                     if debug:
-    #                         print('Ego', ego.id, 'Qv_current', Qv_c, 'Qv_left', Qv_l, 'Qf', self.Qf)
-    #                         print('Ego', ego.id, 'CHANGE LEFT' , current_waypoint.lane_id, 'into', left_waypt.lane_id)
-    #
-    #             elif (right_waypt and rCR >= theta_right
-    #                 and str(current_waypoint.lane_change) in {'Right', 'Both'}):
-    #                     change_lane = True
-    #                     self._waypoint_buffer.clear()
-    #                     self._waypoints_queue.clear()
-    #                     self._waypoints_queue.append((right_waypt.next(3.0)[0], RoadOption.CHANGELANERIGHT)) # TODO: Note this horizon
-    #                     if debug:
-    #                         print('Ego', ego.id, 'Qv_current', Qv_c, 'Qv_right', Qv_r, 'Qf', self.Qf)
-    #                         print('Ego', ego.id, 'CHANGE RIGHT' , current_waypoint.lane_id, 'into', right_waypt.lane_id)
-    #
-    #         elif self._target_road_option == RoadOption.CHANGELANELEFT:
-    #             pass
-    #
-    #         elif self._target_road_option == RoadOption.CHANGELANERIGHT:
-    #             pass
-    #
-    #         else: #at intersection, roadoption is left, right or straight:
-    #             pass
-    #
-    #     else:
-    #         pass
-    #
-    #     control = self.run_planner_step(debug)
-    #
-    #     self._switch_timestep = (self._switch_timestep + 1) % Tds
-    #
-    #     #Drop oldest change_lane value and add newest. Update moving sum Qf
-    #     self.Qf = self.Qf - self._change_buffer.get() + change_lane
-    #     self._change_buffer.put(change_lane)
-    #
-    #     return control
 
     def run_step(self, debug=True):
         """
