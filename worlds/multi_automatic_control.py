@@ -76,12 +76,14 @@ def get_actor_display_name(actor, truncate=250):
 # ==============================================================================
 
 class World(object):
-    def __init__(self, client, carla_world, actor_filter, num_ego_vehicles):
+    def __init__(self, client, carla_world, actor_filter, num_CAVs, num_UCAVs):
         self.client = client
         self.world = carla_world
         self.map = self.world.get_map()
-        self.num_ego_vehicles = num_ego_vehicles
-        self.players = [None] * self.num_ego_vehicles
+        self.num_CAVs = num_CAVs
+        self.num_UCAVs = num_UCAVs
+        self.CAVs = [None] * self.num_CAVs
+        self.UCAVs = [None] * self.num_UCAVs
         self._weather_presets = find_weather_presets()
         self._weather_index = 0
         self._actor_filter = actor_filter
@@ -112,12 +114,12 @@ class World(object):
                     spawn_points.append(transform)
         else:
             spawn_points = self.map.get_spawn_points()
-        spawn_points = random.sample(spawn_points, self.num_ego_vehicles)
+        spawn_points = random.sample(spawn_points, self.num_CAVs + self.num_UCAVs)
 
         blueprints = self.world.get_blueprint_library().filter(self._actor_filter)
 
         batch = []
-        for i in range(0, self.num_ego_vehicles):
+        for i in range(0, self.num_CAVs + self.num_UCAVs):
             # Get a random blueprint.
             blueprint = random.choice(blueprints)
             blueprint.set_attribute('role_name', 'ego')
@@ -125,7 +127,10 @@ class World(object):
                 color = random.choice(blueprint.get_attribute('color').recommended_values)
                 blueprint.set_attribute('color', color)
             batch.append(carla.command.SpawnActor(blueprint, spawn_points[i]))
-        self.players = [self.world.get_actor(response.actor_id) for response in self.client.apply_batch_sync(batch)]
+        CAVs_batch = batch[:self.num_CAVs]
+        UCAVs_batch = batch[-self.num_UCAVs:]
+        self.CAVs = [self.world.get_actor(response.actor_id) for response in self.client.apply_batch_sync(CAVs_batch)]
+        self.UCAVs = [self.world.get_actor(response.actor_id) for response in self.client.apply_batch_sync(UCAVs_batch)]
 
     def next_weather(self, reverse=False):
         self._weather_index += -1 if reverse else 1
@@ -134,9 +139,9 @@ class World(object):
         self.world.set_weather(preset[0])
 
     def destroy(self):
-        self.client.apply_batch([carla.command.DestroyActor(player)
-                                 for player in self.players
-                                 if player is not None])
+        self.client.apply_batch([carla.command.DestroyActor(vehicle)
+                                 for vehicle in self.CAVs + self.UCAVs
+                                 if vehicle is not None])
 
 
 # ==============================================================================
@@ -150,23 +155,27 @@ def game_loop(args):
         client = carla.Client(args.host, args.port)
         client.set_timeout(4.0)
 
-        world = World(client, client.load_world(args.map), args.filter, args.n_connected)
+        world = World(client, client.load_world(args.map), args.filter, args.cavs, args.ucavs)
         settings = world.world.get_settings()
         settings.synchronous_mode = True
         settings.fixed_delta_seconds = args.timestep
         world.world.apply_settings(settings)
 
-        # TODO: Make distribution more realistic. Do research
         agents = []
-        for player in world.players:
+        for vehicle in world.CAVs:
+            # TODO: Make distribution more realistic. Do research
             target_speed = random.uniform(50, 100)
-            agents.append(RoamingAgent(args.timestep, target_speed, player))
+            agents.append(RoamingAgent(args.timestep, target_speed, vehicle))
+        for vehicle in world.UCAVs:
+            target_speed = random.uniform(50, 100)
+            agents.append(RoamingAgent(args.timestep, target_speed, vehicle))
+
 
         while True:
             world.world.tick()
 
             client.apply_batch(
-                [carla.command.ApplyVehicleControl(agent._vehicle, agent.run_step(debug=True))
+                [carla.command.ApplyVehicleControl(agent.vehicle, agent.run_step(debug=True))
                 for agent in agents])
 
     except IndexError:
@@ -214,11 +223,17 @@ def main():
         type=str,
         help='map name (default: Town05)')
     argparser.add_argument(
-        '-c', '--n_connected',
+        '-c', '--cavs',
         metavar='C',
-        default=6,
+        default=9,
         type=int,
-        help='number of connected (algorithm-controlled) autonomous vehicles (default: 6)')
+        help='number of connected (behavior-planned) autonomous vehicles (default: 9)')
+    argparser.add_argument(
+        '-u', '--ucavs',
+        metavar='U',
+        default=5,
+        type=int,
+        help='number of unconnected autonomous vehicles (default: 5)')
     argparser.add_argument(
         '--filter',
         metavar='PATTERN',
