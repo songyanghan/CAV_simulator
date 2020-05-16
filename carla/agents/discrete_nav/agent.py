@@ -40,6 +40,9 @@ class Agent(object):
         self.map = self.vehicle.get_world().get_map()
         self.state = AgentState.NAVIGATING
 
+    def discrete_state(self):
+        return self.local_planner._target_road_option
+
     def run_step(self, debug=False):
         """
         Execute one step of navigation.

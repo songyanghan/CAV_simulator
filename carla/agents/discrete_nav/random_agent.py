@@ -9,11 +9,11 @@
 """ This module implements an agent that roams around a track following random waypoints and avoiding other vehicles.
 The agent also responds to traffic lights. """
 
-from queue import Queue
+import random
 
 from agents.discrete_nav.agent import Agent, AgentState
 from agents.discrete_nav.local_planner import RoadOption, LocalPlanner
-from agents.tools.misc import is_within_distance_ahead, scalar_proj, dot
+from agents.tools.misc import is_within_distance_ahead, scalar_proj
 
 Tds = 10 #Number of timesteps to check behavior planner
 F = 50 # number of past timesteps to remember for lane changing
@@ -23,10 +23,9 @@ theta_right = 2.0 # threshold to switch right
 eps = 150 # meters # TODO: Google DSRC?
 
 
-class RoamingAgent(Agent):
+class RandomAgent(Agent):
     """
-    RoamingAgent uses the connected behavior-planning algorithm to make lane
-    change decisions
+    RandomAgent makes random lane change decisions when changes are possible
     """
 
     def __init__(self, dt, target_speed, vehicle):
@@ -34,7 +33,7 @@ class RoamingAgent(Agent):
 
         :param vehicle: actor to apply to local planner logic onto
         """
-        super(RoamingAgent, self).__init__(vehicle)
+        super(RandomAgent, self).__init__(vehicle)
         self.dt = dt
         self.target_speed = target_speed
         self.local_planner = LocalPlanner(self.vehicle, {'dt': dt,
@@ -46,15 +45,8 @@ class RoamingAgent(Agent):
         self.hazard_c = False
         self.hazard_r = False
 
-        self.Qv_l = 0.9 * self.target_speed
-        self.Qv_c = 0.9 * self.target_speed
-        self.Qv_r = 0.9 * self.target_speed
-        self.change_buf = Queue(maxsize=F)
-        while not self.change_buf.full():
-            self.change_buf.put(False)
-        self.Qf = 0
-        self.rCL = 0
-        self.rCR = 0
+        self.p_l = 0.1
+        self.p_r = 0.1
 
     def detect_nearby_vehicles(self):
         left_waypt = self.current_waypoint.get_left_lane()
@@ -81,38 +73,22 @@ class RoamingAgent(Agent):
 
             # Other is on LEFT lane
             if left_waypt and other_waypoint.lane_id == left_waypt.lane_id:
-                #Check if it's an eps-neighbor
-                if loc.distance(other_loc) < eps and dot(loc - other_loc, fwd) <= 0:
-                    nbrs_l.append(other_fwd_speed)
                 # Check if it's a hazard
                 self.hazard_l = is_within_distance_ahead(other.get_transform(),
                                                          left_waypt.transform,
                                                          self.proximity_threshold)
             # Other is on CURRENT lane
             elif other_waypoint.lane_id == self.current_waypoint.lane_id:
-                #Check if it's an eps-neighbor
-                if loc.distance(other_loc) < eps and dot(loc - other_loc, fwd) <= 0:
-                    nbrs_c.append(other_fwd_speed)
                 # Check if it's a hazard
                 self.hazard_c = is_within_distance_ahead(other.get_transform(),
                                                          self.vehicle.get_transform(),
                                                          self.proximity_threshold)
             # Other is on RIGHT lane
             elif right_waypt and other_waypoint.lane_id == right_waypt.lane_id:
-                #Check if it's an eps-neighbor
-                if loc.distance(other_loc) < eps and dot(loc - other_loc, fwd) <= 0:
-                    nbrs_r.append(other_fwd_speed)
                 # Check if it's a hazard
                 self.hazard_r = is_within_distance_ahead(other.get_transform(),
                                                          right_waypt.transform,
                                                          self.proximity_threshold)
-
-        self.Qv_l = sum(nbrs_l)/len(nbrs_l) if nbrs_l else 0.9*self.target_speed
-        self.Qv_c = sum(nbrs_c)/len(nbrs_c) if nbrs_c else 0.9*self.target_speed
-        self.Qv_r = sum(nbrs_r)/len(nbrs_r) if nbrs_r else 0.9*self.target_speed
-
-        self.rCL = w*(self.Qv_l - self.Qv_c) - self.Qf
-        self.rCR = w*(self.Qv_r - self.Qv_c) - self.Qf
 
     def run_step(self, debug=False):
         """
@@ -131,27 +107,20 @@ class RoamingAgent(Agent):
             and self.local_planner.target_waypoint):
 
                 self.state = AgentState.NAVIGATING
-                change_lane = False
 
                 # Check if we can change left
-                if (self.rCL >= theta_left
+                if (random.uniform(0, 1) <= self.p_l
                     and str(self.current_waypoint.lane_change) in {'Left', 'Both'}
                     and not self.hazard_l):
 
-                        change_lane = True
                         self.local_planner.set_lane_left()
 
                 # Check if we can change right
-                elif (self.rCR >= theta_right
+                elif (random.uniform(0, 1) <= self.p_r
                       and str(self.current_waypoint.lane_change) in {'Right', 'Both'}
                       and not self.hazard_r):
 
-                        change_lane = True
                         self.local_planner.set_lane_right()
-
-                # Update Qf and save most recent change_lane value
-                self.Qf = self.Qf - self.change_buf.get() + change_lane
-                self.change_buf.put(change_lane)
 
         self.switcher_step = (self.switcher_step + 1) % Tds
         return self.local_planner.run_step()

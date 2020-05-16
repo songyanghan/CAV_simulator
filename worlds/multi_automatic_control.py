@@ -53,6 +53,7 @@ except IndexError:
 
 import carla
 from agents.discrete_nav.roaming_agent import RoamingAgent
+from agents.discrete_nav.random_agent import RandomAgent
 
 
 # ==============================================================================
@@ -168,7 +169,7 @@ def game_loop(args):
             agents.append(RoamingAgent(args.timestep, target_speed, vehicle))
         for vehicle in world.UCAVs:
             target_speed = random.uniform(50, 100)
-            agents.append(RoamingAgent(args.timestep, target_speed, vehicle))
+            agents.append(RandomAgent(args.timestep, target_speed, vehicle))
 
 
         while True:
