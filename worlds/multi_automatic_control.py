@@ -175,7 +175,7 @@ def game_loop(args):
         with open(filename, 'a') as outfile:
             print('Simulation_Start:', timestamp, file=outfile)
             print('Arguments:', args, file=outfile)
-            print('Traffic_Density:', (args.cavs + args.ucavs) / course_len, file=outfile)
+            print('Num_Vehicles:', args.cavs + args.ucavs, file=outfile) # density x length
             print('Avg_Velocity', 'Avg_Comfort_Cost', file=outfile)
 
             while True:
@@ -200,7 +200,7 @@ def game_loop(args):
         with open(filename, 'r') as infile:
             infile.readline()
             infile.readline()
-            density = float(infile.readline().split()[1])
+            num_vehicles = float(infile.readline().split()[1])
             infile.readline()
             line = infile.readline()
             while line:
@@ -212,7 +212,7 @@ def game_loop(args):
 
         print('Total Timesteps:', total_steps)
         # TOTAL distance traveled per unit time by all vehicles
-        print('Length x Traffic Flow:', mean_v_sum / total_steps * density)
+        print('Traffic Flow x Length:', mean_v_sum / total_steps * num_vehicles)
         print('Average Driving Comfort Cost:', mean_cc_sum / total_steps)
 
     finally:
