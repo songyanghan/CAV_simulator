@@ -77,7 +77,7 @@ def get_actor_display_name(actor, truncate=250):
 # ==============================================================================
 
 class World(object):
-    def __init__(self, client, carla_world, actor_filter, num_CAVs, num_UCAVs):
+    def __init__(self, client, carla_world, num_CAVs, num_UCAVs):
         self.client = client
         self.world = carla_world
         self.map = self.world.get_map()
@@ -87,7 +87,6 @@ class World(object):
         self.UCAVs = [None] * self.num_UCAVs
         self._weather_presets = find_weather_presets()
         self._weather_index = 0
-        self._actor_filter = actor_filter
         self.restart()
 
     def restart(self):
@@ -96,19 +95,19 @@ class World(object):
         spawn_points = []
         if self.map.name == 'Town05':
             # These are three segments of straight road that I thought would be great spawn zones
-            for x in np.linspace(45, 95, 2):
+            for x in np.linspace(-134, 100, 4):
                 for y in (201, 205, 209):
                     transform = self.map.get_waypoint(carla.Location(x=x, y=y)).transform
                     transform.location.z = transform.location.z + 2.0
                     spawn_points.append(transform)
 
-            for y in np.linspace(95, -87, 4):
+            for y in np.linspace(95, -87, 3):
                 for x in (211, 208, 204):
                     transform = self.map.get_waypoint(carla.Location(x=x, y=y)).transform
                     transform.location.z = transform.location.z + 2.0
                     spawn_points.append(transform)
 
-            for x in np.linspace(0, 100, 3):
+            for x in np.linspace(-134, 80, 4):
                 for y in (-200, -204, -208):
                     transform = self.map.get_waypoint(carla.Location(x=x, y=y)).transform
                     transform.location.z = transform.location.z + 2.0
@@ -117,20 +116,17 @@ class World(object):
             spawn_points = self.map.get_spawn_points()
         spawn_points = random.sample(spawn_points, self.num_CAVs + self.num_UCAVs)
 
-        blueprints = self.world.get_blueprint_library().filter(self._actor_filter)
+        CAVs_batch, UCAVs_batch = [], []
+        blueprint = self.world.get_blueprint_library().filter('vehicle.audi.tt')[0]
 
-        batch = []
-        for i in range(0, self.num_CAVs + self.num_UCAVs):
-            # Get a random blueprint.
-            blueprint = random.choice(blueprints)
-            blueprint.set_attribute('role_name', 'ego')
-            if blueprint.has_attribute('color'):
-                color = random.choice(blueprint.get_attribute('color').recommended_values)
-                blueprint.set_attribute('color', color)
-            batch.append(carla.command.SpawnActor(blueprint, spawn_points[i]))
-        CAVs_batch = batch[:self.num_CAVs]
-        UCAVs_batch = batch[-self.num_UCAVs:]
+        blueprint.set_attribute('color', '255,0,0')
+        for i in range(0, self.num_CAVs):
+            CAVs_batch.append(carla.command.SpawnActor(blueprint, spawn_points[i]))
         self.CAVs = [self.world.get_actor(response.actor_id) for response in self.client.apply_batch_sync(CAVs_batch)]
+
+        blueprint.set_attribute('color', '255,255,255')
+        for i in range(0, self.num_UCAVs):
+            UCAVs_batch.append(carla.command.SpawnActor(blueprint, spawn_points[self.num_CAVs + i]))
         self.UCAVs = [self.world.get_actor(response.actor_id) for response in self.client.apply_batch_sync(UCAVs_batch)]
 
     def next_weather(self, reverse=False):
@@ -158,19 +154,20 @@ def game_loop(args):
         client = carla.Client(args.host, args.port)
         client.set_timeout(4.0)
 
-        world = World(client, client.load_world(args.map), args.filter, args.cavs, args.ucavs)
+        world = World(client, client.load_world(args.map), args.cavs, args.ucavs)
         settings = world.world.get_settings()
         settings.synchronous_mode = True
         settings.fixed_delta_seconds = args.timestep
+        settings.no_rendering_mode = args.no_render
         world.world.apply_settings(settings)
 
         agents = []
-        for vehicle in world.CAVs:
-            target_speed = random.uniform(50, 100) # TODO: Make distribution more realistic. Do research
-            agents.append(RoamingAgent(args.timestep, target_speed, vehicle))
-        for vehicle in world.UCAVs:
-            target_speed = random.uniform(50, 100) # TODO: Make distribution more realistic. Do research
-            agents.append(RandomAgent(args.timestep, target_speed, vehicle))
+        target_speeds = np.linspace(40, 70, args.cavs + args.ucavs).tolist()
+        target_speeds = random.sample(target_speeds, k=len(target_speeds))
+        for i, vehicle in enumerate(world.CAVs):
+            agents.append(RoamingAgent(args.timestep, target_speeds[i], vehicle))
+        for i, vehicle in enumerate(world.UCAVs):
+            agents.append(RandomAgent(args.timestep, target_speeds[args.cavs + i], vehicle))
 
         with open(filename, 'a') as outfile:
             print('Simulation_Start:', timestamp, file=outfile)
@@ -178,48 +175,53 @@ def game_loop(args):
             print('Num_Vehicles:', args.cavs + args.ucavs, file=outfile) # density x length
             print('Avg_Velocity', 'Avg_Comfort_Cost', file=outfile)
 
-            while True:
+            print('Simulation started with step size', args.timestep, 'secs and', args.steps, 'steps!')
+            step = 0
+
+            while step < args.steps:
+                if step % 500 == 0:
+                    print('Reached step', step, 'of', args.steps)
+
                 world.world.tick()
+                step += 1
 
                 client.apply_batch(
                     [carla.command.ApplyVehicleControl(agent.vehicle, agent.run_step(debug=True))
                     for agent in agents])
 
-                t, v_fwds, comfort_costs = zip(*[agent.get_measurements() for agent in agents])
+                v_fwds, comfort_costs = zip(*[agent.get_measurements() for agent in agents])
                 print(mean(v_fwds), mean(comfort_costs), file=outfile)
-
-    except IndexError:
-        print('Died due to IndexError bug')
 
     except KeyboardInterrupt:
         print('Cancelled by user. Saving data and exiting!')
-
-        total_steps = 0
-        mean_v_sum, mean_cc_sum = 0, 0
-
-        with open(filename, 'r') as infile:
-            infile.readline()
-            infile.readline()
-            num_vehicles = float(infile.readline().split()[1])
-            infile.readline()
-            line = infile.readline()
-            while line:
-                total_steps += 1
-                line = line.split()
-                mean_v_sum += float(line[0])
-                mean_cc_sum += float(line[1])
-                line = infile.readline()
-
-        print('Total Timesteps:', total_steps)
-        # TOTAL distance traveled per unit time by all vehicles
-        print('Traffic Flow x Length:', mean_v_sum / total_steps * num_vehicles)
-        print('Average Driving Comfort Cost:', mean_cc_sum / total_steps)
+        print_report(filename)
 
     finally:
         if world is not None:
             world.destroy()
             world.world.tick()
 
+
+def print_report(filename):
+    with open(filename, 'r') as infile:
+        total_steps = 0
+        mean_v_sum, mean_cc_sum = 0, 0
+
+        infile.readline()
+        infile.readline()
+        num_vehicles = float(infile.readline().split()[1])
+        infile.readline()
+        line = infile.readline()
+        while line:
+            total_steps += 1
+            line = line.split()
+            mean_v_sum += float(line[0])
+            mean_cc_sum += float(line[1])
+            line = infile.readline()
+
+        print('Total Timesteps:', total_steps)
+        print('Average Velocity:', mean_v_sum / total_steps)
+        print('Average Driving Comfort Cost:', mean_cc_sum / total_steps)
 
 # ==============================================================================
 # -- main() --------------------------------------------------------------
@@ -269,10 +271,16 @@ def main():
         type=int,
         help='number of unconnected autonomous vehicles (default: 5)')
     argparser.add_argument(
-        '--filter',
-        metavar='PATTERN',
-        default='vehicle.audi.tt',
-        help='actor filter (default: "vehicle.audi.tt")')
+        '--no-render',
+        default=False,
+        action='store_true',
+        help='prevent Unreal Engine from rendering the scene')
+    argparser.add_argument(
+        '-s', '--steps',
+        type=int,
+        default=3000,
+        help='total number of simulation steps (default: 3000)'
+        )
     args = argparser.parse_args()
 
     log_level = logging.DEBUG if args.debug else logging.INFO
@@ -283,6 +291,7 @@ def main():
     print(__doc__)
 
     game_loop(args)
+    print_report()
 
 
 if __name__ == '__main__':
