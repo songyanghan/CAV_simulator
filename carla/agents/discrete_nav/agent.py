@@ -47,7 +47,6 @@ class Agent(object):
         self.t = 0
         self.dt = dt
         self.vehicle = vehicle
-        self.proximity_threshold = 10.0  # meters
         self.local_planner = None
         self.world = self.vehicle.get_world()
         self.map = self.vehicle.get_world().get_map()
@@ -74,7 +73,7 @@ class Agent(object):
         else:
             comfort_cost = 1
 
-        return self.t, velocity_fwd, comfort_cost
+        return velocity_fwd, comfort_cost
 
     def run_step(self, debug=False):
         """

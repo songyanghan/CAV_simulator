@@ -104,8 +104,8 @@ class LocalPlanner(object):
         self._sampling_radius = self._target_speed * 1 / 3.6  # 1 seconds horizon
         self._min_distance = self._sampling_radius * self.MIN_DISTANCE_PERCENTAGE
         args_lateral_dict = {
-            'K_P': 0.4, #1.95
-            'K_D': 0.01,
+            'K_P': 0.5, #1.95
+            'K_D': 0.01, #0.05,
             'K_I': 1.4,
             'dt': self._dt}
         args_longitudinal_dict = {
@@ -140,23 +140,23 @@ class LocalPlanner(object):
         # fill waypoint trajectory queue
         self._compute_next_waypoints(k=200)
 
-    def set_lane_left(self, debug=True):
+    def set_lane_left(self, distance_ahead, debug=True):
         current_waypoint = self._map.get_waypoint(self._vehicle.get_location())
         left_waypt = current_waypoint.get_left_lane()
 
         self._waypoint_buffer.clear()
         self._waypoints_queue.clear()
-        self._waypoints_queue.append((left_waypt.next(self._sampling_radius)[0], RoadOption.CHANGELANELEFT))
+        self._waypoints_queue.append((left_waypt.next(distance_ahead)[0], RoadOption.CHANGELANELEFT))
         if debug:
             print('Ego', self._vehicle.id, 'CHANGE LEFT from lane', current_waypoint.lane_id,'into', left_waypt.lane_id)
 
-    def set_lane_right(self, debug=True):
+    def set_lane_right(self, distance_ahead, debug=True):
         current_waypoint = self._map.get_waypoint(self._vehicle.get_location())
         right_waypt = current_waypoint.get_right_lane()
 
         self._waypoint_buffer.clear()
         self._waypoints_queue.clear()
-        self._waypoints_queue.append((right_waypt.next(self._sampling_radius)[0], RoadOption.CHANGELANERIGHT))
+        self._waypoints_queue.append((right_waypt.next(distance_ahead)[0], RoadOption.CHANGELANERIGHT))
         if debug:
             print('Ego', self._vehicle.id, 'CHANGE RIGHT from lane', current_waypoint.lane_id, 'into', right_waypt.lane_id)
 
