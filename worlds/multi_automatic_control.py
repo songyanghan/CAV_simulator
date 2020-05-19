@@ -1,10 +1,12 @@
 #!/usr/bin/env python
 
 # Copyright (c) 2018 Intel Labs.
-# authors: German Ros (german.ros@intel.com)
+# authors: German Ros (german.ros@intel.com), modified by UConn students (Keyur, Lynn, ?)
 #
-# This work is licensed under the terms of the MIT license.
-# For a copy, see <https://opensource.org/licenses/MIT>.
+# This work is licensed under the terms of the MIT license <https://opensource.org/licenses/MIT>
+#
+# todo: This is MIT licensed, attribution is not necessary but nice; after all,
+#       `git log` is a thing! Will make an 'attribution' file later :)
 
 """
     Example of automatic vehicle control from client side.
@@ -35,13 +37,33 @@ except ImportError:
 # ==============================================================================
 # -- find carla module ---------------------------------------------------------
 # ==============================================================================
-try:
-    sys.path.append(glob.glob('../carla/dist/carla-*%d.%d-%s.egg' % (
+# To import Carla, we need to find the Python egg, and add it to the system path
+# e.g. 'carla-0.9.9-py3.7-linux-x86_64.egg'.
+# Different installations put the .egg file in different locations.
+
+# Possible installation locations are in the list possible_paths:
+possible_paths = ['../carla/dist/carla-*%d.%d-%s.egg',
+    '/opt/carla/PythonAPI/carla/dist/carla-*%d.%d-%s.egg']
+
+# Look for the .egg in each path
+for path in possible_paths:
+    # glob.glob returns a list of all paths matching 
+    egg_path = glob.glob(path % (
         sys.version_info.major,
         sys.version_info.minor,
-        'win-amd64' if os.name == 'nt' else 'linux-x86_64'))[0])
+        'win-amd64' if os.name == 'nt' else 'linux-x86_64'))
+    
+    # If the list is nonempty, then it means we found the .egg,
+    # and we can add it to path.
+    if len(egg_path) > 0:
+        break
+
+# Try to add egg_path[0] to the path. If we didn't find anything, egg_path
+# is empty, and we get an index error.
+try:
+    sys.path.append(egg_path[0])
 except IndexError:
-    pass
+    raise FileNotFoundError ("Can't find Carla .egg. This script may need updating, check your install.")
 
 # ==============================================================================
 # -- add PythonAPI for release mode --------------------------------------------
