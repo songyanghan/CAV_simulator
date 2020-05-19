@@ -6,11 +6,6 @@ from agents.tools.misc import is_within_distance_ahead, scalar_proj, dot, norm
 
 
 Tds = 10 #Number of timesteps to check behavior planner
-F = 50 # number of past timesteps to remember for lane changing
-w = 0.4 # weight of Qv in lane change reward function
-theta_left = 2.0 # threshold to switch left
-theta_right = 2.0 # threshold to switch right
-eps = 150 # meters # TODO: Google DSRC?
 theta_a = 2.0 # meters/sec^2 # threshold above which acceleration is "uncomfortable"
 
 
@@ -20,10 +15,6 @@ class RandomAgent(Agent):
     """
 
     def __init__(self, dt, target_speed, vehicle):
-        """
-
-        :param vehicle: actor to apply to local planner logic onto
-        """
         super(RandomAgent, self).__init__(vehicle, dt)
         self.dt = dt
         self.target_speed = target_speed
@@ -36,7 +27,7 @@ class RandomAgent(Agent):
         self.chg_hazard_l = False
         self.hazard_c = False
         self.chg_hazard_r = False
-        self.change_distance = 20.0  # meters
+        self.change_distance = 15.0  # meters
 
         self.p_l = 0.01
         self.p_r = 0.01

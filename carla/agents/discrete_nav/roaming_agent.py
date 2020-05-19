@@ -21,10 +21,6 @@ class RoamingAgent(Agent):
     """
 
     def __init__(self, dt, target_speed, vehicle):
-        """
-
-        :param vehicle: actor to apply to local planner logic onto
-        """
         super(RoamingAgent, self).__init__(vehicle, dt)
         self.dt = dt
         self.target_speed = target_speed
@@ -37,7 +33,7 @@ class RoamingAgent(Agent):
         self.chg_hazard_l = False
         self.hazard_c = False
         self.chg_hazard_r = False
-        self.change_distance = 20.0  # meters
+        self.change_distance = 15.0  # meters
 
         self.Qv_l = 0.9 * self.target_speed
         self.Qv_c = 0.9 * self.target_speed
