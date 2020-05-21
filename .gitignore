@@ -22,4 +22,4 @@ wheels/
 *.egg
 MANIFEST
 
-c*u*_*.txt
+run_logs/

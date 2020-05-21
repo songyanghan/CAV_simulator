@@ -147,8 +147,10 @@ class World(object):
 
 def game_loop(args):
     world = None
+    dirname = os.path.join(os.path.dirname(__file__), '../run_logs')
     timestamp = datetime.datetime.now()
     filename = 'c%du%d_%s.txt' % (args.cavs, args.ucavs, timestamp)
+    filepath = os.path.join(dirname, filename)
 
     try:
         client = carla.Client(args.host, args.port)
@@ -161,15 +163,16 @@ def game_loop(args):
         settings.no_rendering_mode = args.no_render
         world.world.apply_settings(settings)
 
-        agents = []
+        CAV_agents = []
+        UCAV_agents = []
         target_speeds = np.linspace(40, 70, args.cavs + args.ucavs).tolist()
         target_speeds = random.sample(target_speeds, k=len(target_speeds))
         for i, vehicle in enumerate(world.CAVs):
-            agents.append(RoamingAgent(args.timestep, target_speeds[i], vehicle))
+            CAV_agents.append(RoamingAgent(args.timestep, target_speeds[i], vehicle))
         for i, vehicle in enumerate(world.UCAVs):
-            agents.append(RandomAgent(args.timestep, target_speeds[args.cavs + i], vehicle))
+            UCAV_agents.append(RandomAgent(args.timestep, target_speeds[args.cavs + i], vehicle))
 
-        with open(filename, 'a') as outfile:
+        with open(filepath, 'a') as outfile:
             print('Simulation_Start:', timestamp, file=outfile)
             print('Arguments:', args, file=outfile)
             print('Num_Vehicles:', args.cavs + args.ucavs, file=outfile) # density x length
@@ -185,26 +188,35 @@ def game_loop(args):
                 world.world.tick()
                 step += 1
 
-                client.apply_batch(
-                    [carla.command.ApplyVehicleControl(agent.vehicle, agent.run_step(debug=True))
-                    for agent in agents])
+                batch = []
+                for agent in CAV_agents:
+                    batch.append(carla.command.ApplyVehicleControl(agent.vehicle, agent.run_step(debug=True)))
+                for agent in UCAV_agents:
+                    batch.append(carla.command.ApplyVehicleControl(agent.vehicle, agent.run_step(debug=True)))
+                client.apply_batch(batch)
 
-                v_fwds, comfort_costs = zip(*[agent.get_measurements() for agent in agents])
-                print(mean(v_fwds), mean(comfort_costs), file=outfile)
+                v_fwds, comfort_costs = zip(*[agent.get_measurements() for agent in CAV_agents+UCAV_agents])
+                if CAV_agents:
+                    CAV_v_fwds, CAV_comfort_costs = zip(*[agent.get_measurements() for agent in CAV_agents])
+                    print(mean(CAV_v_fwds), mean(CAV_comfort_costs), mean(v_fwds), mean(comfort_costs), file=outfile)
+                else:
+                    print(-1, -1, mean(v_fwds), mean(comfort_costs), file=outfile)
 
     except KeyboardInterrupt:
         print('Cancelled by user. Saving data and exiting!')
-        print_report(filename)
 
     finally:
         if world is not None:
             world.destroy()
             world.world.tick()
 
+        print_report(filepath)
+
 
 def print_report(filename):
     with open(filename, 'r') as infile:
         total_steps = 0
+        mean_CAV_v_sum, mean_CAV_cc_sum = 0, 0
         mean_v_sum, mean_cc_sum = 0, 0
 
         infile.readline()
@@ -215,12 +227,20 @@ def print_report(filename):
         while line:
             total_steps += 1
             line = line.split()
-            mean_v_sum += float(line[0])
-            mean_cc_sum += float(line[1])
+            mean_CAV_v_sum += float(line[0])
+            mean_CAV_cc_sum += float(line[1])
+            mean_v_sum += float(line[2])
+            mean_cc_sum += float(line[3])
             line = infile.readline()
 
         print('Total Timesteps:', total_steps)
-        print('Average Velocity:', mean_v_sum / total_steps)
+        if mean_CAV_cc_sum >= 0:
+            print('Average CAV Velocity:', mean_CAV_v_sum*3.6 / total_steps)
+            print('Average CAV Driving Comfort Cost:', mean_CAV_cc_sum / total_steps)
+        else:
+            print('Average CAV Velocity: N/A')
+            print('Average CAV Driving Comfort Cost: N/A')
+        print('Average Velocity:', mean_v_sum*3.6 / total_steps)
         print('Average Driving Comfort Cost:', mean_cc_sum / total_steps)
 
 # ==============================================================================
@@ -291,7 +311,6 @@ def main():
     print(__doc__)
 
     game_loop(args)
-    print_report()
 
 
 if __name__ == '__main__':
