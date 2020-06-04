@@ -18,17 +18,17 @@ from path_planner import RoadOption, PathPlanner
 from tools.misc import is_within_distance_ahead, scalar_proj, dot, norm
 
 
-class CAVBehaviorPlanner(BehaviorPlanner):
+class RandomBehaviorPlanner(BehaviorPlanner):
     """
     RandomAgent makes random lane change decisions when changes are possible
     """
 
     def __init__(self, dt, target_speed, vehicle, param_dict):
-        super(CAVBehavior, self).__init__(vehicle, dt, param_dict)
+        super(RandomBehaviorPlanner, self).__init__(vehicle, dt, param_dict)
         self.dt = dt
         self.target_speed = target_speed
-            self.path_planner = PathPlanner(self.vehicle, {'dt': dt,
-                                                         'target_speed': target_speed})
+        self.path_planner = PathPlanner(self.vehicle, {'dt': dt,
+                                                       'target_speed': target_speed})
 
         self.p_l = param_dict['p_l']
         self.p_r = param_dict['p_r']

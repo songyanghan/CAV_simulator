@@ -18,18 +18,18 @@ from path_planner import RoadOption, PathPlanner
 from tools.misc import is_within_distance_ahead, scalar_proj, dot, norm
 
 
-class RandomBehaviorPlanner(BehaviorPlanner):
+class CAVBehaviorPlanner(BehaviorPlanner):
     """
     RoamingAgent uses the connected behavior-planning algorithm to make lane
     change decisions
     """
 
     def __init__(self, dt, target_speed, vehicle, param_dict):
-        super(RandomBehavior, self).__init__(vehicle, dt, param_dict)
+        super(CAVBehaviorPlanner, self).__init__(vehicle, dt, param_dict)
         self.dt = dt
         self.target_speed = target_speed
-        self.local_planner = LocalPlanner(self.vehicle, {'dt': dt,
-                                                         'target_speed': target_speed})
+        self.path_planner = PathPlanner(self.vehicle, {'dt': dt,
+                                                       'target_speed': target_speed})
 
         self.F = param_dict['F']
         self.w = param_dict['w']
@@ -127,24 +127,22 @@ class RandomBehaviorPlanner(BehaviorPlanner):
         self.detect_nearby_vehicles()
 
         if self.hazard_c:
-            self.state = AgentState.BLOCKED_BY_VEHICLE
             return self.emergency_stop()
 
         if self.discrete_state() == RoadOption.CHANGELANELEFT:
             if self.chg_hazard_l:
                 # Cancel the attempted lane change
-                self.local_planner.set_lane_right(self.change_distance)
+                self.path_planner.set_lane_right(self.change_distance)
 
         elif self.discrete_state() == RoadOption.CHANGELANERIGHT:
             if self.chg_hazard_r:
                 # Cancel the attempted lane change
-                self.local_planner.set_lane_left(self.change_distance)
+                self.path_planner.set_lane_left(self.change_distance)
 
         elif (self.discrete_state() == RoadOption.LANEFOLLOW
-            and self.local_planner.target_waypoint
+            and self.path_planner.target_waypoint
             and self.switcher_step == self.Tds - 1):
-
-                    self.state = AgentState.NAVIGATING
+            
                     change_lane = False
 
                     # Check if we can change left
@@ -153,7 +151,7 @@ class RandomBehaviorPlanner(BehaviorPlanner):
                         and not self.chg_hazard_l):
 
                             change_lane = True
-                            self.local_planner.set_lane_left(self.change_distance)
+                            self.path_planner.set_lane_left(self.change_distance)
 
                     # Check if we can change right
                     elif (self.rCR >= self.theta_CR
@@ -161,11 +159,11 @@ class RandomBehaviorPlanner(BehaviorPlanner):
                           and not self.chg_hazard_r):
 
                             change_lane = True
-                            self.local_planner.set_lane_right(self.change_distance)
+                            self.path_planner.set_lane_right(self.change_distance)
 
                     # Update Qf and save most recent change_lane value
                     self.Qf = self.Qf - self.change_buf.get() + change_lane
                     self.change_buf.put(change_lane)
 
         self.switcher_step = (self.switcher_step + 1) % self.Tds
-        return self.local_planner.run_step()
+        return self.path_planner.run_step()

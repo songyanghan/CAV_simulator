@@ -26,7 +26,7 @@ class BehaviorPlanner(object):
 
     def __init__(self, vehicle, dt, param_dict):
         """
-        :param vehicle: actor to apply to local planner logic onto
+        :param vehicle: actor to apply to path planner logic onto
         """
         self.t = 0
         self.dt = dt
@@ -45,18 +45,18 @@ class BehaviorPlanner(object):
         self.change_distance = param_dict['chg_distance']
 
     def discrete_state(self):
-        # Local planner is not allowed to take left/right turn roadoptions,
+        # path planner is not allowed to take left/right turn roadoptions,
         # so target road option will necessarily be one of LANEFOLLOW (LK),
         # CHANGELANELEFT (CL), or CHANGELANERIGHT (CR) and thus we use the
         # target road option variable as our state
-        return self.local_planner._target_road_option
+        return self.path_planner._target_road_option
 
     def get_measurements(self):
         velocity_fwd = scalar_proj(self.vehicle.get_velocity(),
                                    self.current_waypoint.transform.get_forward_vector())
 
         acceleration = norm(self.vehicle.get_acceleration())
-        is_changing_lanes = (self.local_planner._target_road_option in {RoadOption.CHANGELANELEFT,
+        is_changing_lanes = (self.path_planner._target_road_option in {RoadOption.CHANGELANELEFT,
                                                                         RoadOption.CHANGELANERIGHT})
 
         if is_changing_lanes:
