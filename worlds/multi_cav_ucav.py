@@ -90,8 +90,8 @@ except IndexError:
     pass
 
 import carla
-from roaming_agent import RoamingAgent
-from random_agent import RandomAgent
+from cav_behavior_planner import CAVBehaviorPlanner as CAV
+from random_behavior_planner import RandomBehaviorPlanner as UCAV
 
 
 # ==============================================================================
@@ -206,9 +206,9 @@ def game_loop(args):
         target_speeds = np.linspace(40, 70, args.cavs + args.ucavs).tolist()
         target_speeds = random.sample(target_speeds, k=len(target_speeds))
         for i, vehicle in enumerate(world.CAVs):
-            CAV_agents.append(RoamingAgent(args.timestep, target_speeds[i], vehicle, param_dict))
+            CAV_agents.append(CAV(args.timestep, target_speeds[i], vehicle, param_dict))
         for i, vehicle in enumerate(world.UCAVs):
-            UCAV_agents.append(RandomAgent(args.timestep, target_speeds[args.cavs + i], vehicle, param_dict))
+            UCAV_agents.append(UCAV(args.timestep, target_speeds[args.cavs + i], vehicle, param_dict))
 
         with open(filepath, 'a') as outfile:
             print('Simulation_Start:', timestamp, file=outfile)

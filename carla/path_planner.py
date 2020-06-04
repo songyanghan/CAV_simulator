@@ -36,9 +36,9 @@ class RoadOption(Enum):
     CHANGELANERIGHT = 6
 
 
-class LocalPlanner(object):
+class PathPlanner(object):
     """
-    LocalPlanner implements the basic behavior of following a trajectory of waypoints that is generated on-the-fly.
+    PathPlanner implements the basic behavior of following a trajectory of waypoints that is generated on-the-fly.
     The low-level motion of the vehicle is computed by using two PID controllers, one is used for the lateral control
     and the other for the longitudinal control (cruise speed).
 

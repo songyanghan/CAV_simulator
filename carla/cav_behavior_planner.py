@@ -13,19 +13,19 @@
 
 from queue import Queue
 
-from agent import Agent
-from local_planner import RoadOption, LocalPlanner
+from behavior_planner import BehaviorPlanner
+from path_planner import RoadOption, PathPlanner
 from tools.misc import is_within_distance_ahead, scalar_proj, dot, norm
 
 
-class RoamingAgent(Agent):
+class RandomBehaviorPlanner(BehaviorPlanner):
     """
     RoamingAgent uses the connected behavior-planning algorithm to make lane
     change decisions
     """
 
     def __init__(self, dt, target_speed, vehicle, param_dict):
-        super(RoamingAgent, self).__init__(vehicle, dt, param_dict)
+        super(RandomBehavior, self).__init__(vehicle, dt, param_dict)
         self.dt = dt
         self.target_speed = target_speed
         self.local_planner = LocalPlanner(self.vehicle, {'dt': dt,

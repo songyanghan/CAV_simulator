@@ -13,21 +13,21 @@
 
 import random
 
-from agent import Agent
-from local_planner import RoadOption, LocalPlanner
+from behavior_planner import BehaviorPlanner
+from path_planner import RoadOption, PathPlanner
 from tools.misc import is_within_distance_ahead, scalar_proj, dot, norm
 
 
-class RandomAgent(Agent):
+class CAVBehaviorPlanner(BehaviorPlanner):
     """
     RandomAgent makes random lane change decisions when changes are possible
     """
 
     def __init__(self, dt, target_speed, vehicle, param_dict):
-        super(RandomAgent, self).__init__(vehicle, dt, param_dict)
+        super(CAVBehavior, self).__init__(vehicle, dt, param_dict)
         self.dt = dt
         self.target_speed = target_speed
-        self.local_planner = LocalPlanner(self.vehicle, {'dt': dt,
+            self.path_planner = PathPlanner(self.vehicle, {'dt': dt,
                                                          'target_speed': target_speed})
 
         self.p_l = param_dict['p_l']
@@ -99,15 +99,15 @@ class RandomAgent(Agent):
         if self.discrete_state() == RoadOption.CHANGELANELEFT:
             if self.chg_hazard_l:
                 # Cancel the attempted lane change
-                self.local_planner.set_lane_right(self.change_distance)
+                self.path_planner.set_lane_right(self.change_distance)
 
         elif self.discrete_state() == RoadOption.CHANGELANERIGHT:
             if self.chg_hazard_r:
                 # Cancel the attempted lane change
-                self.local_planner.set_lane_left(self.change_distance)
+                self.path_planner.set_lane_left(self.change_distance)
 
         elif (self.discrete_state() == RoadOption.LANEFOLLOW
-            and self.local_planner.target_waypoint
+            and self.path_planner.target_waypoint
             and self.switcher_step == self.Tds - 1):
 
                     # Check if we can change left
@@ -115,14 +115,14 @@ class RandomAgent(Agent):
                         and str(self.current_waypoint.lane_change) in {'Left', 'Both'}
                         and not self.chg_hazard_l):
 
-                            self.local_planner.set_lane_left(self.change_distance)
+                            self.path_planner.set_lane_left(self.change_distance)
 
                     # Check if we can change right
                     elif (random.uniform(0, 1) <= self.p_r
                           and str(self.current_waypoint.lane_change) in {'Right', 'Both'}
                           and not self.chg_hazard_r):
 
-                            self.local_planner.set_lane_right(self.change_distance)
+                            self.path_planner.set_lane_right(self.change_distance)
 
         self.switcher_step = (self.switcher_step + 1) % self.Tds
-        return self.local_planner.run_step()
+        return self.path_planner.run_step()

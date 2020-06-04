@@ -14,14 +14,14 @@
 from enum import Enum
 
 from tools.misc import get_speed, scalar_proj, norm
-from local_planner import RoadOption
+from path_planner import RoadOption
 
 import carla
 
 
-class Agent(object):
+class BehaviorPlanner(object):
     """
-    Base class to define agents in CARLA
+    Base class to define behavior planners in CARLA
     """
 
     def __init__(self, vehicle, dt, param_dict):
@@ -31,7 +31,7 @@ class Agent(object):
         self.t = 0
         self.dt = dt
         self.vehicle = vehicle
-        self.local_planner = None
+        self.path_planner = None
         self.world = self.vehicle.get_world()
         self.map = self.vehicle.get_world().get_map()
         self.current_waypoint = None
