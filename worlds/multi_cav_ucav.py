@@ -14,16 +14,13 @@
 from __future__ import print_function
 
 import argparse
-import collections
 import datetime
 import glob
 import logging
-import math
 import os
 import random
 import re
 import sys
-import weakref
 from statistics import mean
 
 try:
@@ -345,8 +342,6 @@ def main():
     logging.basicConfig(format='%(levelname)s: %(message)s', level=log_level)
 
     logging.info('listening to server %s:%s', args.host, args.port)
-
-    print(__doc__)
 
     game_loop(args)
 

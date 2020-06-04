@@ -27,7 +27,6 @@ class RoadOption(Enum):
     """
     RoadOption represents the possible topological configurations when moving from a segment of lane to other.
     """
-    VOID = -1
     LEFT = 1
     RIGHT = 2
     STRAIGHT = 3
@@ -71,7 +70,6 @@ class PathPlanner(object):
         self._min_distance = None
         self._current_waypoint = None
         self._target_road_option = None
-        self._next_waypoints = None
         self.target_waypoint = None
         self._vehicle_controller = None
 

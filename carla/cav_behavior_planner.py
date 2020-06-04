@@ -15,7 +15,7 @@ from queue import Queue
 
 from behavior_planner import BehaviorPlanner
 from path_planner import RoadOption, PathPlanner
-from tools.misc import is_within_distance_ahead, scalar_proj, dot, norm
+from tools.misc import scalar_proj, dot, norm
 
 
 class CAVBehaviorPlanner(BehaviorPlanner):
@@ -121,7 +121,6 @@ class CAVBehaviorPlanner(BehaviorPlanner):
         Execute one step of navigation.
         :return: carla.VehicleControl
         """
-        self.t += self.dt # TODO: Call super run_step first maybe?
         self.current_waypoint = self.map.get_waypoint(self.vehicle.get_location())
 
         self.detect_nearby_vehicles()
@@ -142,7 +141,7 @@ class CAVBehaviorPlanner(BehaviorPlanner):
         elif (self.discrete_state() == RoadOption.LANEFOLLOW
             and self.path_planner.target_waypoint
             and self.switcher_step == self.Tds - 1):
-            
+
                     change_lane = False
 
                     # Check if we can change left

@@ -15,7 +15,7 @@ import random
 
 from behavior_planner import BehaviorPlanner
 from path_planner import RoadOption, PathPlanner
-from tools.misc import is_within_distance_ahead, scalar_proj, dot, norm
+from tools.misc import scalar_proj, dot, norm
 
 
 class RandomBehaviorPlanner(BehaviorPlanner):
@@ -88,7 +88,6 @@ class RandomBehaviorPlanner(BehaviorPlanner):
         Execute one step of navigation.
         :return: carla.VehicleControl
         """
-        self.t += self.dt # TODO: Call super run_step first maybe?
         self.current_waypoint = self.map.get_waypoint(self.vehicle.get_location())
 
         self.detect_nearby_vehicles()

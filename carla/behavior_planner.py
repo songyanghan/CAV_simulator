@@ -28,7 +28,6 @@ class BehaviorPlanner(object):
         """
         :param vehicle: actor to apply to path planner logic onto
         """
-        self.t = 0
         self.dt = dt
         self.vehicle = vehicle
         self.path_planner = None
@@ -73,7 +72,6 @@ class BehaviorPlanner(object):
         Execute one step of navigation.
         :return: control
         """
-        self.t += self.dt
         self.current_waypoint = self.map.get_waypoint(self.vehicle.get_location())
 
         control = carla.VehicleControl()
