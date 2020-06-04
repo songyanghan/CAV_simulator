@@ -13,8 +13,8 @@
 
 from enum import Enum
 
-from agents.tools.misc import get_speed, scalar_proj, norm
-from agents.discrete_nav.local_planner import RoadOption
+from tools.misc import get_speed, scalar_proj, norm
+from local_planner import RoadOption
 
 import carla
 

@@ -90,8 +90,8 @@ except IndexError:
     pass
 
 import carla
-from agents.discrete_nav.roaming_agent import RoamingAgent
-from agents.discrete_nav.random_agent import RandomAgent
+from roaming_agent import RoamingAgent
+from random_agent import RandomAgent
 
 
 # ==============================================================================
