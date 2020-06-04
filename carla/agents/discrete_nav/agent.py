@@ -19,14 +19,6 @@ from agents.discrete_nav.local_planner import RoadOption
 import carla
 
 
-class AgentState(Enum):
-    """
-    AGENT_STATE represents the possible states of a roaming agent
-    """
-    NAVIGATING = 1
-    BLOCKED_BY_VEHICLE = 2
-
-
 class Agent(object):
     """
     Base class to define agents in CARLA
@@ -42,7 +34,6 @@ class Agent(object):
         self.local_planner = None
         self.world = self.vehicle.get_world()
         self.map = self.vehicle.get_world().get_map()
-        self.state = AgentState.NAVIGATING
         self.current_waypoint = None
 
         self.Tds = param_dict['Tds']
@@ -54,6 +45,10 @@ class Agent(object):
         self.change_distance = param_dict['chg_distance']
 
     def discrete_state(self):
+        # Local planner is not allowed to take left/right turn roadoptions,
+        # so target road option will necessarily be one of LANEFOLLOW (LK),
+        # CHANGELANELEFT (CL), or CHANGELANERIGHT (CR) and thus we use the
+        # target road option variable as our state
         return self.local_planner._target_road_option
 
     def get_measurements(self):

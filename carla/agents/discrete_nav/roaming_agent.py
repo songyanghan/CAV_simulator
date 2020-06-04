@@ -13,7 +13,7 @@ theta_CL#!/usr/bin/env python
 
 from queue import Queue
 
-from agents.discrete_nav.agent import Agent, AgentState
+from agents.discrete_nav.agent import Agent
 from agents.discrete_nav.local_planner import RoadOption, LocalPlanner
 from agents.tools.misc import is_within_distance_ahead, scalar_proj, dot, norm
 

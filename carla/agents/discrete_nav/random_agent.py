@@ -13,7 +13,7 @@
 
 import random
 
-from agents.discrete_nav.agent import Agent, AgentState
+from agents.discrete_nav.agent import Agent
 from agents.discrete_nav.local_planner import RoadOption, LocalPlanner
 from agents.tools.misc import is_within_distance_ahead, scalar_proj, dot, norm
 
@@ -94,7 +94,6 @@ class RandomAgent(Agent):
         self.detect_nearby_vehicles()
 
         if self.hazard_c:
-            self.state = AgentState.BLOCKED_BY_VEHICLE
             return self.emergency_stop()
 
         if self.discrete_state() == RoadOption.CHANGELANELEFT:
@@ -110,8 +109,6 @@ class RandomAgent(Agent):
         elif (self.discrete_state() == RoadOption.LANEFOLLOW
             and self.local_planner.target_waypoint
             and self.switcher_step == self.Tds - 1):
-
-                    self.state = AgentState.NAVIGATING
 
                     # Check if we can change left
                     if (random.uniform(0, 1) <= self.p_l
