@@ -154,11 +154,13 @@ class World(object):
         CAVs_batch, UCAVs_batch = [], []
         blueprint = self.world.get_blueprint_library().filter('vehicle.audi.tt')[0]
 
+        # Spawn all the CAVs
         blueprint.set_attribute('color', '255,0,0')
         for i in range(0, self.num_CAVs):
             CAVs_batch.append(carla.command.SpawnActor(blueprint, spawn_points[i]))
         self.CAVs = [self.world.get_actor(response.actor_id) for response in self.client.apply_batch_sync(CAVs_batch)]
 
+        # Spawn all the UCAVs
         blueprint.set_attribute('color', '255,255,255')
         for i in range(0, self.num_UCAVs):
             UCAVs_batch.append(carla.command.SpawnActor(blueprint, spawn_points[self.num_CAVs + i]))
@@ -182,6 +184,8 @@ class World(object):
 
 def game_loop(args):
     world = None
+
+    # We will record measurements at each timestep in a file
     dirname = os.path.join(os.path.dirname(__file__), '../run_logs')
     timestamp = datetime.datetime.now()
     filename = 'c%du%d_%s.txt' % (args.cavs, args.ucavs, timestamp)
@@ -200,8 +204,10 @@ def game_loop(args):
 
         CAV_agents = []
         UCAV_agents = []
+        # Generate varying vehicle target speeds within an allowed interval
         target_speeds = np.linspace(40, 70, args.cavs + args.ucavs).tolist()
         target_speeds = random.sample(target_speeds, k=len(target_speeds))
+
         for i, vehicle in enumerate(world.CAVs):
             CAV_agents.append(CAV(args.timestep, target_speeds[i], vehicle, param_dict))
         for i, vehicle in enumerate(world.UCAVs):
@@ -223,6 +229,7 @@ def game_loop(args):
                 world.world.tick()
                 step += 1
 
+                # Run one step of behavior planning, path planning, and control
                 batch = []
                 for agent in CAV_agents:
                     batch.append(carla.command.ApplyVehicleControl(agent.vehicle, agent.run_step(debug=True)))
@@ -230,6 +237,7 @@ def game_loop(args):
                     batch.append(carla.command.ApplyVehicleControl(agent.vehicle, agent.run_step(debug=True)))
                 client.apply_batch(batch)
 
+                # Save measurements to file
                 v_fwds, comfort_costs = zip(*[agent.get_measurements() for agent in CAV_agents+UCAV_agents])
                 if CAV_agents:
                     CAV_v_fwds, CAV_comfort_costs = zip(*[agent.get_measurements() for agent in CAV_agents])

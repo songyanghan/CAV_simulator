@@ -34,9 +34,9 @@ class RandomBehaviorPlanner(BehaviorPlanner):
         self.p_r = param_dict['p_r']
 
         self.switcher_step = 0  # cycles through 0, 1, ..., (Tds - 1) each timestep
-        self.chg_hazard_l = False
-        self.hazard_c = False
-        self.chg_hazard_r = False
+        self.chg_hazard_l = False  # there is a hazard on the left
+        self.hazard_c = False  # there is a hazard ahead
+        self.chg_hazard_r = False  # there is a hazard on the right
 
     def detect_nearby_vehicles(self):
         left_waypt = self.current_waypoint.get_left_lane()

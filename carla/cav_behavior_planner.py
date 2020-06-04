@@ -56,9 +56,9 @@ class CAVBehaviorPlanner(BehaviorPlanner):
         left_waypt = self.current_waypoint.get_left_lane()
         right_waypt = self.current_waypoint.get_right_lane()
 
-        self.chg_hazard_l = False
-        self.hazard_c = False
-        self.chg_hazard_r = False
+        self.chg_hazard_l = False  # there is a hazard on the left
+        self.hazard_c = False  # there is a hazard ahead
+        self.chg_hazard_r = False  # there is a hazard on the right
 
         nbrs_l, nbrs_c, nbrs_r = [], [], []
 
