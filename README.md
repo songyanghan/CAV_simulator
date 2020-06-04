@@ -29,3 +29,17 @@ The vehicles' driving behavior is controlled by three layers of control:
 1. Behavior Planner: updates discrete variables and sets target behavior based on road state
 2. Path Planner: based on the target behavior, charts a reference trajectory of evenly-spaced waypoints along the center line of the target lane
 3. Controller: updates continuous state variables and calculates control inputs based on error compared to reference trajectory
+
+## Running the Simulation
+The `worlds/multi_cavs_ucavs.py` script takes several command-line arguments. The ones you are most likely to change are:
+| Argument    | Description |
+| ---         | ---         |
+| -t [FLOAT]  | Float number of seconds for each timestep to last. DO NOT increase above 0.1 |
+| -c [INT]    | Integer number of connected vehicles (not advised to exceed 25 vehicles total unless you're sure the hardware can handle it). |
+| -u [INT]    | Integer number of unconnected (random) vehicles (not advised to exceed 25 vehicles total unless you're sure the hardware can handle it). |
+| --no-render | Run in no-rendering mode. The physics engine will still run, but the graphics loop will not and nothing will show up on screen. Speeds up simulation. |
+| -s [INT]    | Integer total number of timesteps to run the simulation for before saving and exiting. |
+
+You can also run `python3 worlds/multi_cavs_ucavs.py --help` to see more about all the arguments.
+
+NOTE: Specific parameter values for the driving algorithm are defined within the `worlds/multi_cavs_ucavs.py` file and can be changed there.
