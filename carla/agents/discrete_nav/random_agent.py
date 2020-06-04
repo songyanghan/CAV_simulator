@@ -1,3 +1,16 @@
+#!/usr/bin/env python
+
+# Companion code for the UConn undergraduate Honors Thesis "Evaluating Driving
+# Performance of a Novel Behavior Planning Model on Connected Autonomous
+# Vehicles" by Keyur Shah (UConn '20). Thesis was advised by Dr. Fei Miao;
+# see http://feimiao.org/research.html.
+#
+# This code is meant for use with the autonomous vehicle simulator CARLA
+# (https://carla.org/).
+#
+# Disclaimer: The CARLA project, which this project uses code from, follows the
+# MIT license. The license is available at https://opensource.org/licenses/MIT.
+
 import random
 
 from agents.discrete_nav.agent import Agent, AgentState
@@ -5,32 +18,25 @@ from agents.discrete_nav.local_planner import RoadOption, LocalPlanner
 from agents.tools.misc import is_within_distance_ahead, scalar_proj, dot, norm
 
 
-Tds = 10 #Number of timesteps to check behavior planner
-theta_a = 2.0 # meters/sec^2 # threshold above which acceleration is "uncomfortable"
-
-
 class RandomAgent(Agent):
     """
     RandomAgent makes random lane change decisions when changes are possible
     """
 
-    def __init__(self, dt, target_speed, vehicle):
-        super(RandomAgent, self).__init__(vehicle, dt)
+    def __init__(self, dt, target_speed, vehicle, param_dict):
+        super(RandomAgent, self).__init__(vehicle, dt, param_dict)
         self.dt = dt
         self.target_speed = target_speed
         self.local_planner = LocalPlanner(self.vehicle, {'dt': dt,
                                                          'target_speed': target_speed})
 
+        self.p_l = param_dict['p_l']
+        self.p_r = param_dict['p_r']
+
         self.switcher_step = 0  # cycles through 0, 1, ..., (Tds - 1) each timestep
-        self.proximity_threshold = 12.0  # meters
-        self.chg_safety_distance = 4.0  # meters both ways
         self.chg_hazard_l = False
         self.hazard_c = False
         self.chg_hazard_r = False
-        self.change_distance = 15.0  # meters
-
-        self.p_l = 0.01
-        self.p_r = 0.01
 
     def detect_nearby_vehicles(self):
         left_waypt = self.current_waypoint.get_left_lane()
@@ -63,19 +69,19 @@ class RandomAgent(Agent):
             if left_waypt and other_waypoint.lane_id == left_waypt.lane_id:
                 # Check if it's a hazard. Any one hazard should make the flag stay true
                 self.chg_hazard_l = (self.chg_hazard_l or
-                    abs(norm(other.get_location() - loc)) < self.chg_safety_distance)
+                    abs(norm(other.get_location() - loc)) < self.theta_l)
 
             # Other is on CURRENT lane
             elif other_waypoint.lane_id == self.current_waypoint.lane_id:
                 # Check if it's a hazard. Any one hazard should make the flag stay true
                 self.hazard_c = (self.hazard_c or
-                    loc.distance(other_loc) < self.proximity_threshold and dot(loc - other_loc, fwd) <= 0)
+                    loc.distance(other_loc) < self.theta_c and dot(loc - other_loc, fwd) <= 0)
 
             # Other is on RIGHT lane
             elif right_waypt and other_waypoint.lane_id == right_waypt.lane_id:
                 # Check if it's a hazard. Any one hazard should make the flag stay true
                 self.chg_hazard_r = (self.chg_hazard_r or
-                    abs(norm(other.get_location() - loc)) < self.chg_safety_distance)
+                    abs(norm(other.get_location() - loc)) < self.theta_r)
 
     def run_step(self, debug=False):
         """
@@ -103,7 +109,7 @@ class RandomAgent(Agent):
 
         elif (self.discrete_state() == RoadOption.LANEFOLLOW
             and self.local_planner.target_waypoint
-            and self.switcher_step == Tds - 1):
+            and self.switcher_step == self.Tds - 1):
 
                     self.state = AgentState.NAVIGATING
 
@@ -121,5 +127,5 @@ class RandomAgent(Agent):
 
                             self.local_planner.set_lane_right(self.change_distance)
 
-        self.switcher_step = (self.switcher_step + 1) % Tds
+        self.switcher_step = (self.switcher_step + 1) % self.Tds
         return self.local_planner.run_step()

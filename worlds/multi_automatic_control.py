@@ -1,16 +1,15 @@
 #!/usr/bin/env python
 
-# Copyright (c) 2018 Intel Labs.
-# authors: German Ros (german.ros@intel.com), modified by UConn students (Keyur, Lynn, ?)
+# Companion code for the UConn undergraduate Honors Thesis "Evaluating Driving
+# Performance of a Novel Behavior Planning Model on Connected Autonomous
+# Vehicles" by Keyur Shah (UConn '20). Thesis was advised by Dr. Fei Miao;
+# see http://feimiao.org/research.html.
 #
-# This work is licensed under the terms of the MIT license <https://opensource.org/licenses/MIT>
+# This code is meant for use with the autonomous vehicle simulator CARLA
+# (https://carla.org/).
 #
-# todo: This is MIT licensed, attribution is not necessary but nice; after all,
-#       `git log` is a thing! Will make an 'attribution' file later :)
-
-"""
-    Example of automatic vehicle control from client side.
-"""
+# Disclaimer: The CARLA project, which this project uses code from, follows the
+# MIT license. The license is available at https://opensource.org/licenses/MIT.
 
 from __future__ import print_function
 
@@ -33,6 +32,23 @@ except ImportError:
     raise RuntimeError(
         'cannot import numpy, make sure numpy package is installed')
 
+# ==============================================================================
+# -- parameters for driving algorithms -----------------------------------------
+# ==============================================================================
+param_dict = {
+    'Tds':          10,     # check for lane changes once every Tds timesteps
+    'F':            50,     # past timesteps to remember for Qf quality factor
+    'w':            0.4,    # weight of Qv in lane change reward function
+    'theta_CL':     2.0,    # reward function threshold to switch left
+    'theta_CR':     2.0,    # reward function threshold to switch right
+    'eps':          150.0,  # [m] communication radius for connected vehicles
+    'theta_a':      2.0,    # [m/s^2] "uncomfortable" acceleration threshold
+    'p_l':          0.01,   # random change left probability
+    'p_r':          0.01,   # random change right probability
+    'theta_l':      4.0,    # [m] safety radius to prevent left changes
+    'theta_c':      12.0,   # [m] safety cushion in front of vehicle
+    'theta_r':      4.0,    # [m] safety radius to prevent right changes
+    'chg_distance': 15.0}   # [m] longitudinal distance to travel while changing
 
 # ==============================================================================
 # -- find carla module ---------------------------------------------------------
@@ -47,12 +63,12 @@ possible_paths = ['../carla/dist/carla-*%d.%d-%s.egg',
 
 # Look for the .egg in each path
 for path in possible_paths:
-    # glob.glob returns a list of all paths matching 
+    # glob.glob returns a list of all paths matching
     egg_path = glob.glob(path % (
         sys.version_info.major,
         sys.version_info.minor,
         'win-amd64' if os.name == 'nt' else 'linux-x86_64'))
-    
+
     # If the list is nonempty, then it means we found the .egg,
     # and we can add it to path.
     if len(egg_path) > 0:
@@ -190,9 +206,9 @@ def game_loop(args):
         target_speeds = np.linspace(40, 70, args.cavs + args.ucavs).tolist()
         target_speeds = random.sample(target_speeds, k=len(target_speeds))
         for i, vehicle in enumerate(world.CAVs):
-            CAV_agents.append(RoamingAgent(args.timestep, target_speeds[i], vehicle))
+            CAV_agents.append(RoamingAgent(args.timestep, target_speeds[i], vehicle, param_dict))
         for i, vehicle in enumerate(world.UCAVs):
-            UCAV_agents.append(RandomAgent(args.timestep, target_speeds[args.cavs + i], vehicle))
+            UCAV_agents.append(RandomAgent(args.timestep, target_speeds[args.cavs + i], vehicle, param_dict))
 
         with open(filepath, 'a') as outfile:
             print('Simulation_Start:', timestamp, file=outfile)

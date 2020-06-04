@@ -1,10 +1,15 @@
 #!/usr/bin/env python
 
-# Copyright (c) 2018 Intel Labs.
-# authors: German Ros (german.ros@intel.com)
+# Companion code for the UConn undergraduate Honors Thesis "Evaluating Driving
+# Performance of a Novel Behavior Planning Model on Connected Autonomous
+# Vehicles" by Keyur Shah (UConn '20). Thesis was advised by Dr. Fei Miao;
+# see http://feimiao.org/research.html.
 #
-# This work is licensed under the terms of the MIT license.
-# For a copy, see <https://opensource.org/licenses/MIT>.
+# This code is meant for use with the autonomous vehicle simulator CARLA
+# (https://carla.org/).
+#
+# Disclaimer: The CARLA project, which this project uses code from, follows the
+# MIT license. The license is available at https://opensource.org/licenses/MIT.
 
 """ This module contains PID controllers to perform lateral and longitudinal control. """
 
@@ -86,7 +91,7 @@ class PIDLongitudinalController():
         self._K_D = K_D
         self._K_I = K_I
         self._dt = dt
-        self._e_buffer = deque(maxlen=30)
+        self._e_buffer = deque(maxlen=30)  # saves recent error values
 
     def run_step(self, target_speed, debug=False):
         """
@@ -141,7 +146,7 @@ class PIDLateralController():
         self._K_D = K_D
         self._K_I = K_I
         self._dt = dt
-        self._e_buffer = deque(maxlen=10)
+        self._e_buffer = deque(maxlen=10)  # saves recent error values
 
     def run_step(self, waypoint):
         """

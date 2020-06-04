@@ -1,14 +1,15 @@
 #!/usr/bin/env python
 
-# Copyright (c) 2018 Intel Labs.
-# authors: German Ros (german.ros@intel.com)
+# Companion code for the UConn undergraduate Honors Thesis "Evaluating Driving
+# Performance of a Novel Behavior Planning Model on Connected Autonomous
+# Vehicles" by Keyur Shah (UConn '20). Thesis was advised by Dr. Fei Miao;
+# see http://feimiao.org/research.html.
 #
-# This work is licensed under the terms of the MIT license.
-# For a copy, see <https://opensource.org/licenses/MIT>.
-
-""" This module implements an agent that roams around a track following random
-waypoints and avoiding other vehicles.
-The agent also responds to traffic lights. """
+# This code is meant for use with the autonomous vehicle simulator CARLA
+# (https://carla.org/).
+#
+# Disclaimer: The CARLA project, which this project uses code from, follows the
+# MIT license. The license is available at https://opensource.org/licenses/MIT.
 
 from enum import Enum
 
@@ -16,15 +17,6 @@ from agents.tools.misc import get_speed, scalar_proj, norm
 from agents.discrete_nav.local_planner import RoadOption
 
 import carla
-
-
-Tds = 10 #Number of timesteps to check behavior planner
-F = 50 # number of past timesteps to remember for lane changing
-w = 0.4 # weight of Qv in lane change reward function
-theta_left = 2.0 # threshold to switch left
-theta_right = 2.0 # threshold to switch right
-eps = 150 # meters # TODO: Google DSRC?
-theta_a = 2.0 # meters/sec^2 # threshold above which acceleration is "uncomfortable"
 
 
 class AgentState(Enum):
@@ -40,7 +32,7 @@ class Agent(object):
     Base class to define agents in CARLA
     """
 
-    def __init__(self, vehicle, dt):
+    def __init__(self, vehicle, dt, param_dict):
         """
         :param vehicle: actor to apply to local planner logic onto
         """
@@ -53,7 +45,13 @@ class Agent(object):
         self.state = AgentState.NAVIGATING
         self.current_waypoint = None
 
-        self.theta_a = 2.0  # m/s^2
+        self.Tds = param_dict['Tds']
+        self.theta_a = param_dict['theta_a']
+        # Safety parameters
+        self.theta_l = param_dict['theta_l']
+        self.theta_c = param_dict['theta_c']
+        self.theta_r = param_dict['theta_r']
+        self.change_distance = param_dict['chg_distance']
 
     def discrete_state(self):
         return self.local_planner._target_road_option
@@ -68,7 +66,7 @@ class Agent(object):
 
         if is_changing_lanes:
             comfort_cost = 3
-        elif acceleration >= theta_a:
+        elif acceleration >= self.theta_a:
             comfort_cost = 2
         else:
             comfort_cost = 1
