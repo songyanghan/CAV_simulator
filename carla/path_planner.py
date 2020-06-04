@@ -11,8 +11,6 @@
 # Disclaimer: The CARLA project, which this project uses code from, follows the
 # MIT license. The license is available at https://opensource.org/licenses/MIT.
 
-""" This module contains a local planner to perform low-level waypoint following based on PID controllers. """
-
 from enum import Enum
 from queue import Queue
 from collections import deque
@@ -27,6 +25,7 @@ class RoadOption(Enum):
     """
     RoadOption represents the possible topological configurations when moving from a segment of lane to other.
     """
+    VOID = -1
     LEFT = 1
     RIGHT = 2
     STRAIGHT = 3
@@ -38,10 +37,6 @@ class RoadOption(Enum):
 class PathPlanner(object):
     """
     PathPlanner implements the basic behavior of following a trajectory of waypoints that is generated on-the-fly.
-    The low-level motion of the vehicle is computed by using two PID controllers, one is used for the lateral control
-    and the other for the longitudinal control (cruise speed).
-
-    When multiple paths are available (intersections) this local planner makes a random choice.
     """
 
     # minimum distance to target waypoint as a percentage (e.g. within 90% of
@@ -78,7 +73,8 @@ class PathPlanner(object):
         self._waypoints_queue = deque(maxlen=20000)
         self._buffer_size = 5
         # immediate next few waypoints in the planned path (helpful for
-        # controllers like MPC which use the next several reference states)
+        # controllers like MPC which use the next SEVERAL reference positions)
+        # In our case, PID only uses the next SINGLE waypoint so it's unused
         self._waypoint_buffer = deque(maxlen=self._buffer_size)
 
         # initializing controller
@@ -94,12 +90,6 @@ class PathPlanner(object):
         print("Resetting ego-vehicle!")
 
     def _init_controller(self, opt_dict):
-        """
-        Controller initialization.
-
-        :param opt_dict: dictionary of arguments.
-        :return:
-        """
         # default params
         self._dt = 1.0 / 20.0
         # self._switch_timestep = 0
@@ -164,21 +154,9 @@ class PathPlanner(object):
             print('Ego', self._vehicle.id, 'CHANGE RIGHT from lane', current_waypoint.lane_id, 'into', right_waypt.lane_id)
 
     def set_speed(self, speed):
-        """
-        Request new target speed.
-
-        :param speed: new target speed in Km/h
-        :return:
-        """
         self._target_speed = speed
 
-    def _compute_next_waypoints(self, k=1):
-        """
-        Add new waypoints to the trajectory queue.
-
-        :param k: how many waypoints to compute
-        :return:
-        """
+    def _compute_next_waypoints(self, k=1):  # Adds k new waypoints to queue
         # check we do not overflow the queue
         available_entries = self._waypoints_queue.maxlen - len(self._waypoints_queue)
         k = min(available_entries, k)
@@ -203,14 +181,6 @@ class PathPlanner(object):
             self._waypoints_queue.append((next_waypoint, road_option))
 
     def run_step(self, debug=True):
-        """
-        Execute one step of local planning which involves running the longitudinal and lateral PID controllers to
-        follow the waypoints trajectory.
-
-        :param debug: boolean flag to activate waypoints debugging
-        :return:
-        """
-
         # not enough waypoints in the horizon? => add more!
         if len(self._waypoints_queue) < int(self._waypoints_queue.maxlen * 0.5):
             self._compute_next_waypoints(k=100)

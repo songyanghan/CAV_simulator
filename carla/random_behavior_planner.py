@@ -20,7 +20,7 @@ from tools.misc import scalar_proj, dot, norm
 
 class RandomBehaviorPlanner(BehaviorPlanner):
     """
-    RandomAgent makes random lane change decisions when changes are possible
+    RandomBehaviorPlanner attempts random lane change decisions when possible
     """
 
     def __init__(self, dt, target_speed, vehicle, param_dict):
@@ -84,10 +84,6 @@ class RandomBehaviorPlanner(BehaviorPlanner):
                     abs(norm(other.get_location() - loc)) < self.theta_r)
 
     def run_step(self, debug=False):
-        """
-        Execute one step of navigation.
-        :return: carla.VehicleControl
-        """
         self.current_waypoint = self.map.get_waypoint(self.vehicle.get_location())
 
         self.detect_nearby_vehicles()

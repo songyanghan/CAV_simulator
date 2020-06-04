@@ -20,8 +20,8 @@ from tools.misc import scalar_proj, dot, norm
 
 class CAVBehaviorPlanner(BehaviorPlanner):
     """
-    RoamingAgent uses the connected behavior-planning algorithm to make lane
-    change decisions
+    CAVBehaviorPlanner uses the connected behavior-planning algorithm to make
+    lane change decisions
     """
 
     def __init__(self, dt, target_speed, vehicle, param_dict):
@@ -117,10 +117,6 @@ class CAVBehaviorPlanner(BehaviorPlanner):
         self.rCR = self.w*(self.Qv_r - self.Qv_c) - self.Qf
 
     def run_step(self, debug=False):
-        """
-        Execute one step of navigation.
-        :return: carla.VehicleControl
-        """
         self.current_waypoint = self.map.get_waypoint(self.vehicle.get_location())
 
         self.detect_nearby_vehicles()

@@ -55,9 +55,8 @@ def is_within_distance_ahead(target_transform, current_transform, max_distance):
     """
     Check if a target object is within a certain distance in front of a reference object.
 
-    :param target_transform: location of the target object
-    :param current_transform: location of the reference object
-    :param orientation: orientation of the reference object
+    :param target_transform: transform (pose) of the target object
+    :param current_transform: transform (pose) of the reference object
     :param max_distance: maximum allowed distance
     :return: True if target object is within max_distance ahead of the reference object
     """

@@ -25,9 +25,6 @@ class BehaviorPlanner(object):
     """
 
     def __init__(self, vehicle, dt, param_dict):
-        """
-        :param vehicle: actor to apply to path planner logic onto
-        """
         self.dt = dt
         self.vehicle = vehicle
         self.path_planner = None
@@ -68,10 +65,6 @@ class BehaviorPlanner(object):
         return velocity_fwd, comfort_cost
 
     def run_step(self, debug=False):
-        """
-        Execute one step of navigation.
-        :return: control
-        """
         self.current_waypoint = self.map.get_waypoint(self.vehicle.get_location())
 
         control = carla.VehicleControl()
@@ -86,10 +79,6 @@ class BehaviorPlanner(object):
         return control
 
     def emergency_stop(self):
-        """
-        Send an emergency stop command to the vehicle
-        :return: control
-        """
         control = carla.VehicleControl()
         control.steer = 0.0
         control.throttle = 0.0
