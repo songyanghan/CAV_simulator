@@ -56,7 +56,9 @@ param_dict = {
 
 # Possible installation locations are in the list possible_paths:
 possible_paths = ['../carla/dist/carla-*%d.%d-%s.egg',
-    '/opt/carla/PythonAPI/carla/dist/carla-*%d.%d-%s.egg']
+    '/opt/carla/PythonAPI/carla/dist/carla-*%d.%d-%s.egg',
+    '../carla-simulator/dist/carla-*%d.%d-%s.egg',
+    '/opt/carla-simulator/PythonAPI/carla/dist/carla-*%d.%d-%s.egg']
 
 # Look for the .egg in each path
 for path in possible_paths:
