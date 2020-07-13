@@ -22,6 +22,7 @@ import random
 import re
 import sys
 from statistics import mean
+from pathlib import Path
 
 try:
     import numpy as np
@@ -188,6 +189,8 @@ def game_loop(args):
     world = None
 
     # We will record measurements at each timestep in a file
+    # create run_logs if it doesn't exist
+    Path("../run_logs").mkdir(exist_ok=True)
     dirname = os.path.join(os.path.dirname(__file__), '../run_logs')
     timestamp = datetime.datetime.now()
     filename = 'c%du%d_%s.txt' % (args.cavs, args.ucavs, timestamp)
@@ -259,7 +262,7 @@ def game_loop(args):
 
 
 def print_report(filename):
-    with open(filename, 'r') as infile:
+    with open(filename, 'r+') as infile:
         total_steps = 0
         mean_CAV_v_sum, mean_CAV_cc_sum = 0, 0
         mean_v_sum, mean_cc_sum = 0, 0
