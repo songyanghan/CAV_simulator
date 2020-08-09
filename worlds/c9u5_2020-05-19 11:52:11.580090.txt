@@ -1,0 +1,2 @@
+Simulation_Start: 2020-05-19 11:52:11.580090
+Arguments: Namespace(cavs=9, debug=False, filter='vehicle.audi.tt', host='127.0.0.1', map='Town05', port=2000, timestep=0.05, ucavs=5)
