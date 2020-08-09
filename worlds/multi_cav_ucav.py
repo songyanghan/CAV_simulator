@@ -218,7 +218,7 @@ def game_loop(args):
         for i, vehicle in enumerate(world.UCAVs):
             UCAV_agents.append(UCAV(args.timestep, target_speeds[args.cavs + i], vehicle, param_dict))
 
-        with open(filepath, 'a') as outfile:
+        with open(filepath, 'a+') as outfile:
             print('Simulation_Start:', timestamp, file=outfile)
             print('Arguments:', args, file=outfile)
             print('Num_Vehicles:', args.cavs + args.ucavs, file=outfile) # density x length
@@ -262,7 +262,7 @@ def game_loop(args):
 
 
 def print_report(filename):
-    with open(filename, 'r+') as infile:
+    with open(filename, 'a+') as infile:
         total_steps = 0
         mean_CAV_v_sum, mean_CAV_cc_sum = 0, 0
         mean_v_sum, mean_cc_sum = 0, 0
