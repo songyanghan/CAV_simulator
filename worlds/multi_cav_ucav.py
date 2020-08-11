@@ -262,7 +262,7 @@ def game_loop(args):
 
 
 def print_report(filename):
-    with open(filename, 'a+') as infile:
+    with open(filename, 'r+') as infile:
         total_steps = 0
         mean_CAV_v_sum, mean_CAV_cc_sum = 0, 0
         mean_v_sum, mean_cc_sum = 0, 0
