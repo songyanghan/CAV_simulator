@@ -237,9 +237,9 @@ def game_loop(args):
                 # Run one step of behavior planning, path planning, and control
                 batch = []
                 for agent in CAV_agents:
-                    batch.append(carla.command.ApplyVehicleControl(agent.vehicle, agent.run_step(debug=True)))
+                    batch.append(carla.command.ApplyVehicleControl(agent.vehicle, agent.run_step(debug=False)))
                 for agent in UCAV_agents:
-                    batch.append(carla.command.ApplyVehicleControl(agent.vehicle, agent.run_step(debug=True)))
+                    batch.append(carla.command.ApplyVehicleControl(agent.vehicle, agent.run_step(debug=False)))
                 client.apply_batch(batch)
 
                 # Save measurements to file
@@ -329,13 +329,13 @@ def main():
     argparser.add_argument(
         '-c', '--cavs',
         metavar='C',
-        default=9,
+        default=30,
         type=int,
         help='number of connected (behavior-planned) autonomous vehicles (default: 9)')
     argparser.add_argument(
         '-u', '--ucavs',
         metavar='U',
-        default=5,
+        default=0,
         type=int,
         help='number of unconnected autonomous vehicles (default: 5)')
     argparser.add_argument(
