@@ -125,6 +125,11 @@ class World(object):
         self.UCAVs = [None] * self.num_UCAVs
         self._weather_presets = find_weather_presets()
         self._weather_index = 0
+        
+        self.tm_port = 8000
+        self.traffic_manager = client.get_trafficmanager(self.tm_port)
+        self.traffic_manager.set_global_distance_to_leading_vehicle(1.0)
+        
         self.restart()
 
     def restart(self):
@@ -158,9 +163,10 @@ class World(object):
         blueprint = self.world.get_blueprint_library().filter('vehicle.audi.tt')[0]
 
         # Spawn all the CAVs
-        blueprint.set_attribute('color', '255,0,0')
+        blueprint.set_attribute('color', '255,255,0')
         for i in range(0, self.num_CAVs):
-            CAVs_batch.append(carla.command.SpawnActor(blueprint, spawn_points[i]))
+            CAVs_batch.append(carla.command.SpawnActor(blueprint, spawn_points[i])
+                             .then(carla.command.SetAutopilot(carla.command.FutureActor, True, 8000)))
         self.CAVs = [self.world.get_actor(response.actor_id) for response in self.client.apply_batch_sync(CAVs_batch)]
 
         # Spawn all the UCAVs
@@ -212,11 +218,14 @@ def game_loop(args):
         # Generate varying vehicle target speeds within an allowed interval
         target_speeds = np.linspace(40, 70, args.cavs + args.ucavs).tolist()
         target_speeds = random.sample(target_speeds, k=len(target_speeds))
+        
+        for i, vehicle in enumerate(world.world.get_actors().filter("*vehicle*")):
+            world.traffic_manager.auto_lane_change(vehicle, True)
 
-        for i, vehicle in enumerate(world.CAVs):
-            CAV_agents.append(CAV(args.timestep, target_speeds[i], vehicle, param_dict))
-        for i, vehicle in enumerate(world.UCAVs):
-            UCAV_agents.append(UCAV(args.timestep, target_speeds[args.cavs + i], vehicle, param_dict))
+#         for i, vehicle in enumerate(world.CAVs):
+#             CAV_agents.append(CAV(args.timestep, target_speeds[i], vehicle, param_dict))
+#         for i, vehicle in enumerate(world.UCAVs):
+#             UCAV_agents.append(UCAV(args.timestep, target_speeds[args.cavs + i], vehicle, param_dict))
 
         with open(filepath, 'a+') as outfile:
             print('Simulation_Start:', timestamp, file=outfile)
@@ -234,21 +243,21 @@ def game_loop(args):
                 world.world.tick()
                 step += 1
 
-                # Run one step of behavior planning, path planning, and control
-                batch = []
-                for agent in CAV_agents:
-                    batch.append(carla.command.ApplyVehicleControl(agent.vehicle, agent.run_step(debug=True)))
-                for agent in UCAV_agents:
-                    batch.append(carla.command.ApplyVehicleControl(agent.vehicle, agent.run_step(debug=True)))
-                client.apply_batch(batch)
+#                 # Run one step of behavior planning, path planning, and control
+#                 batch = []
+#                 for agent in CAV_agents:
+#                     batch.append(carla.command.ApplyVehicleControl(agent.vehicle, agent.run_step(debug=True)))
+#                 for agent in UCAV_agents:
+#                     batch.append(carla.command.ApplyVehicleControl(agent.vehicle, agent.run_step(debug=True)))
+#                 client.apply_batch(batch)
 
                 # Save measurements to file
-                v_fwds, comfort_costs = zip(*[agent.get_measurements() for agent in CAV_agents+UCAV_agents])
-                if CAV_agents:
-                    CAV_v_fwds, CAV_comfort_costs = zip(*[agent.get_measurements() for agent in CAV_agents])
-                    print(mean(CAV_v_fwds), mean(CAV_comfort_costs), mean(v_fwds), mean(comfort_costs), file=outfile)
-                else:
-                    print(-1, -1, mean(v_fwds), mean(comfort_costs), file=outfile)
+#                 v_fwds, comfort_costs = zip(*[agent.get_measurements() for agent in CAV_agents+UCAV_agents])
+#                 if CAV_agents:
+#                     CAV_v_fwds, CAV_comfort_costs = zip(*[agent.get_measurements() for agent in CAV_agents])
+#                     print(mean(CAV_v_fwds), mean(CAV_comfort_costs), mean(v_fwds), mean(comfort_costs), file=outfile)
+#                 else:
+#                     print(-1, -1, mean(v_fwds), mean(comfort_costs), file=outfile)
 
     except KeyboardInterrupt:
         print('Cancelled by user. Saving data and exiting!')
@@ -258,7 +267,7 @@ def game_loop(args):
             world.destroy()
             world.world.tick()
 
-        print_report(filepath)
+#         print_report(filepath)
 
 
 def print_report(filename):
@@ -329,13 +338,13 @@ def main():
     argparser.add_argument(
         '-c', '--cavs',
         metavar='C',
-        default=9,
+        default=30,
         type=int,
         help='number of connected (behavior-planned) autonomous vehicles (default: 9)')
     argparser.add_argument(
         '-u', '--ucavs',
         metavar='U',
-        default=5,
+        default=0,
         type=int,
         help='number of unconnected autonomous vehicles (default: 5)')
     argparser.add_argument(

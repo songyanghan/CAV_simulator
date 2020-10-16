@@ -97,14 +97,14 @@ class PathPlanner(object):
         self._sampling_radius = self._target_speed * 1 / 3.6  # 1 seconds horizon
         self._min_distance = self._sampling_radius * self.MIN_DISTANCE_PERCENTAGE
         args_lateral_dict = {
-            'K_P': 0.5, #1.95
-            'K_D': 0.01, #0.05,
-            'K_I': 1.4,
+            'K_P': 0.5, # Keyur: 0.5  Example: 0.95
+            'K_D': 0.2, # Keyur: 0.01  Example: 0.2
+            'K_I': 0.07,  # Keyur: 1.4  Example: 0.07
             'dt': self._dt}
         args_longitudinal_dict = {
-            'K_P': 1.0,
+            'K_P': 0.5,
             'K_D': 0,
-            'K_I': 1,
+            'K_I': 0.05, # Keyur: 1  Example:0.05
             'dt': self._dt}
 
         # parameters overload
@@ -180,7 +180,7 @@ class PathPlanner(object):
 
             self._waypoints_queue.append((next_waypoint, road_option))
 
-    def run_step(self, debug=True):
+    def run_step(self, debug=False):
         # not enough waypoints in the horizon? => add more!
         if len(self._waypoints_queue) < int(self._waypoints_queue.maxlen * 0.5):
             self._compute_next_waypoints(k=100)
