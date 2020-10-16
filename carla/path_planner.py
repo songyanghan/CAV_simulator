@@ -97,7 +97,7 @@ class PathPlanner(object):
         self._sampling_radius = self._target_speed * 1 / 3.6  # 1 seconds horizon
         self._min_distance = self._sampling_radius * self.MIN_DISTANCE_PERCENTAGE
         args_lateral_dict = {
-            'K_P': 10, # Keyur: 0.5  Local_planner: 1.95  Traffic_manager: 10
+            'K_P': 0.5, # Keyur: 0.5  Local_planner: 1.95  Traffic_manager: 10
             'K_D': 0, # Keyur: 0.01  Local_planner: 0.2  Traffic_manager: 0
             'K_I': 0.1, # Keyur: 1.4  Local_planner: 0.07  Traffic_manager: 0.1
             'dt': self._dt}
