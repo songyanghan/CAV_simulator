@@ -208,13 +208,16 @@ def game_loop(args):
         world.world.apply_settings(settings)
 
         CAV_agents = []
+        CAV_agents_dict = {}
         UCAV_agents = []
         # Generate varying vehicle target speeds within an allowed interval
         target_speeds = np.linspace(40, 70, args.cavs + args.ucavs).tolist()
         target_speeds = random.sample(target_speeds, k=len(target_speeds))
 
         for i, vehicle in enumerate(world.CAVs):
-            CAV_agents.append(CAV(args.timestep, target_speeds[i], vehicle, param_dict))
+            new_agent = CAV(args.timestep, target_speeds[i], vehicle, param_dict, CAV_agents_dict)
+            CAV_agents.append(new_agent)
+            CAV_agents_dict[vehicle.id] = new_agent
         for i, vehicle in enumerate(world.UCAVs):
             UCAV_agents.append(UCAV(args.timestep, target_speeds[args.cavs + i], vehicle, param_dict))
 
@@ -329,9 +332,9 @@ def main():
     argparser.add_argument(
         '-c', '--cavs',
         metavar='C',
-        default=30,
+        default=10,
         type=int,
-        help='number of connected (behavior-planned) autonomous vehicles (default: 9)')
+        help='number of connected (behavior-planned) autonomous vehicles (default: 10)')
     argparser.add_argument(
         '-u', '--ucavs',
         metavar='U',

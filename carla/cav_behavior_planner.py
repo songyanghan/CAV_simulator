@@ -12,10 +12,17 @@
 # MIT license. The license is available at https://opensource.org/licenses/MIT.
 
 from queue import Queue
+from enum import Enum
 
 from behavior_planner import BehaviorPlanner
 from path_planner import RoadOption, PathPlanner
 from tools.misc import scalar_proj, dot, norm
+
+
+class Behavior(Enum):
+    KEEP_LANE = 0
+    CHANGE_LEFT = 1
+    CHANGE_RIGHT = 2
 
 
 class CAVBehaviorPlanner(BehaviorPlanner):
@@ -24,7 +31,7 @@ class CAVBehaviorPlanner(BehaviorPlanner):
     lane change decisions
     """
 
-    def __init__(self, dt, target_speed, vehicle, param_dict):
+    def __init__(self, dt, target_speed, vehicle, param_dict, CAV_agents_dict):
         super(CAVBehaviorPlanner, self).__init__(vehicle, dt, param_dict)
         self.dt = dt
         self.target_speed = target_speed
@@ -51,8 +58,24 @@ class CAVBehaviorPlanner(BehaviorPlanner):
         self.Qf = 0
         self.rCL = 0
         self.rCR = 0
+        
+        self.neighbor_left = []
+        self.neighbor_current = []
+        self.neighbor_right = []
+        
+        self.behavior = Behavior.KEEP_LANE
+        
+        self.closeneighbor_left = []
+        self.closeneighbor_current = []
+        self.closeneighbor_right = []
+        
+        self.CAV_agents_dict = CAV_agents_dict
 
     def detect_nearby_vehicles(self):
+        self.lanechanging_conflict = False
+        
+        self.close_eps = 30
+        
         left_waypt = self.current_waypoint.get_left_lane()
         right_waypt = self.current_waypoint.get_right_lane()
 
@@ -61,6 +84,7 @@ class CAVBehaviorPlanner(BehaviorPlanner):
         self.chg_hazard_r = False  # there is a hazard on the right
 
         nbrs_l, nbrs_c, nbrs_r = [], [], []
+        self.neighbor_left, self.neighbor_current, self.neighbor_right = [], [], []
 
         for other in self.world.get_actors().filter("*vehicle*"):
             # must be a different vehicle
@@ -84,6 +108,10 @@ class CAVBehaviorPlanner(BehaviorPlanner):
                 #Check if it's an eps-neighbor
                 if loc.distance(other_loc) < self.eps and dot(loc - other_loc, fwd) <= 0:
                     nbrs_l.append(other_fwd_speed)
+                    self.neighbor_left.append(other)
+                    
+                if loc.distance(other_loc) < self.close_eps:
+                    self.closeneighbor_left.append(other)
 
                 # Check if it's a hazard. Any one hazard should make the flag stay true
                 self.chg_hazard_l = (self.chg_hazard_l or
@@ -94,6 +122,7 @@ class CAVBehaviorPlanner(BehaviorPlanner):
                 #Check if it's an eps-neighbor
                 if loc.distance(other_loc) < self.eps and dot(loc - other_loc, fwd) <= 0:
                     nbrs_c.append(other_fwd_speed)
+                    self.neighbor_current.append(other)
 
                 # Check if it's a hazard. Any one hazard should make the flag stay true
                 self.hazard_c = (self.hazard_c or
@@ -104,6 +133,10 @@ class CAVBehaviorPlanner(BehaviorPlanner):
                 #Check if it's an eps-neighbor
                 if loc.distance(other_loc) < self.eps and dot(loc - other_loc, fwd) <= 0:
                     nbrs_r.append(other_fwd_speed)
+                    self.neighbor_right.append(other)
+                    
+                if loc.distance(other_loc) < self.close_eps:
+                    self.closeneighbor_right.append(other)
 
                 # Check if it's a hazard. Any one hazard should make the flag stay true
                 self.chg_hazard_r = (self.chg_hazard_r or
@@ -115,6 +148,28 @@ class CAVBehaviorPlanner(BehaviorPlanner):
 
         self.rCL = self.w*(self.Qv_l - self.Qv_c) - self.Qf
         self.rCR = self.w*(self.Qv_r - self.Qv_c) - self.Qf
+        
+    def left_change_conflict_detection(self):
+        """
+        detect whether there is a conflict with other vehicles on the left lane
+        before starting a lane-changing
+        """
+        for vehicle in self.closeneighbor_left:
+            if self.CAV_agents_dict[vehicle.id].discrete_state() in {RoadOption.CHANGELANELEFT, RoadOption.CHANGELANERIGHT}:
+                return True
+            
+        return False
+    
+    def right_change_conflict_detection(self):
+        """
+        detect whether there is a conflict with other vehicles on the right lane
+        before starting a lane-changing
+        """
+        for vehicle in self.closeneighbor_right:
+            if self.CAV_agents_dict[vehicle.id].discrete_state() in {RoadOption.CHANGELANELEFT, RoadOption.CHANGELANERIGHT}:
+                return True
+            
+        return False
 
     def run_step(self, debug=False):
         self.current_waypoint = self.map.get_waypoint(self.vehicle.get_location())
@@ -122,15 +177,18 @@ class CAVBehaviorPlanner(BehaviorPlanner):
         self.detect_nearby_vehicles()
 
         if self.hazard_c:
+            self.behavior = Behavior.KEEP_LANE
             return self.emergency_stop()
 
         if self.discrete_state() == RoadOption.CHANGELANELEFT:
-            if self.chg_hazard_l:
+            if self.chg_hazard_l or self.left_change_conflict_detection():
+                self.behavior = Behavior.CHANGE_RIGHT
                 # Cancel the attempted lane change
                 self.path_planner.set_lane_right(self.change_distance)
 
         elif self.discrete_state() == RoadOption.CHANGELANERIGHT:
-            if self.chg_hazard_r:
+            if self.chg_hazard_r or self.right_change_conflict_detection():
+                self.behavior = Behavior.CHANGE_LEFT
                 # Cancel the attempted lane change
                 self.path_planner.set_lane_left(self.change_distance)
 
@@ -139,21 +197,26 @@ class CAVBehaviorPlanner(BehaviorPlanner):
             and self.switcher_step == self.Tds - 1):
 
                     change_lane = False
+                    self.behavior = Behavior.KEEP_LANE
 
                     # Check if we can change left
                     if (self.rCL >= self.theta_CL
                         and str(self.current_waypoint.lane_change) in {'Left', 'Both'}
-                        and not self.chg_hazard_l):
+                        and not self.chg_hazard_l
+                        and not self.left_change_conflict_detection()):
 
                             change_lane = True
+                            self.behavior = Behavior.CHANGE_LEFT
                             self.path_planner.set_lane_left(self.change_distance)
 
                     # Check if we can change right
                     elif (self.rCR >= self.theta_CR
                           and str(self.current_waypoint.lane_change) in {'Right', 'Both'}
-                          and not self.chg_hazard_r):
+                          and not self.chg_hazard_r
+                          and not self.right_change_conflict_detection()):
 
                             change_lane = True
+                            self.behavior = Behavior.CHANGE_RIGHT
                             self.path_planner.set_lane_right(self.change_distance)
 
                     # Update Qf and save most recent change_lane value
