@@ -225,7 +225,7 @@ def game_loop(args):
             print('Simulation_Start:', timestamp, file=outfile)
             print('Arguments:', args, file=outfile)
             print('Num_Vehicles:', args.cavs + args.ucavs, file=outfile) # density x length
-            print('Avg_Velocity', 'Avg_Comfort_Cost', file=outfile)
+            print('Avg_Velocity', 'Avg_Comfort', file=outfile)
 
             print('Simulation started with step size', args.timestep, 'secs and', args.steps, 'steps!')
             step = 0
@@ -287,12 +287,12 @@ def print_report(filename):
         print('Total Timesteps:', total_steps)
         if mean_CAV_cc_sum >= 0:
             print('Average CAV Velocity:', mean_CAV_v_sum*3.6 / total_steps)
-            print('Average CAV Driving Comfort Cost:', mean_CAV_cc_sum / total_steps)
+            print('Average CAV Driving Comfort:', mean_CAV_cc_sum / total_steps)
         else:
             print('Average CAV Velocity: N/A')
-            print('Average CAV Driving Comfort Cost: N/A')
+            print('Average CAV Driving Comfort: N/A')
         print('Average Velocity:', mean_v_sum*3.6 / total_steps)
-        print('Average Driving Comfort Cost:', mean_cc_sum / total_steps)
+        print('Average Driving Comfort:', mean_cc_sum / total_steps)
 
 # ==============================================================================
 # -- main() --------------------------------------------------------------

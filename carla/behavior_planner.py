@@ -56,13 +56,13 @@ class BehaviorPlanner(object):
                                                                         RoadOption.CHANGELANERIGHT})
 
         if is_changing_lanes:
-            comfort_cost = 3
+            comfort = 1
         elif acceleration >= self.theta_a:
-            comfort_cost = 2
+            comfort = 2
         else:
-            comfort_cost = 1
+            comfort = 3
 
-        return velocity_fwd, comfort_cost
+        return velocity_fwd, comfort
 
     def run_step(self, debug=False):
         self.current_waypoint = self.map.get_waypoint(self.vehicle.get_location())
