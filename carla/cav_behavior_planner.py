@@ -72,9 +72,7 @@ class CAVBehaviorPlanner(BehaviorPlanner):
         self.CAV_agents_dict = CAV_agents_dict
 
     def detect_nearby_vehicles(self):
-        self.lanechanging_conflict = False
-        
-        self.close_eps = 30
+        self.close_eps = 30 # threshold to determine the close neighbors
         
         left_waypt = self.current_waypoint.get_left_lane()
         right_waypt = self.current_waypoint.get_right_lane()
