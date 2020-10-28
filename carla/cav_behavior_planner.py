@@ -153,8 +153,9 @@ class CAVBehaviorPlanner(BehaviorPlanner):
         before starting a lane-changing
         """
         for vehicle in self.closeneighbor_left:
-            if self.CAV_agents_dict[vehicle.id].discrete_state() in {RoadOption.CHANGELANELEFT, RoadOption.CHANGELANERIGHT}:
-                return True
+            if vehicle.id in self.CAV_agents_dict.keys():
+                if self.CAV_agents_dict[vehicle.id].discrete_state() in {RoadOption.CHANGELANELEFT, RoadOption.CHANGELANERIGHT}:
+                    return True
             
         return False
     
@@ -164,8 +165,9 @@ class CAVBehaviorPlanner(BehaviorPlanner):
         before starting a lane-changing
         """
         for vehicle in self.closeneighbor_right:
-            if self.CAV_agents_dict[vehicle.id].discrete_state() in {RoadOption.CHANGELANELEFT, RoadOption.CHANGELANERIGHT}:
-                return True
+            if vehicle.id in self.CAV_agents_dict.keys():
+                if self.CAV_agents_dict[vehicle.id].discrete_state() in {RoadOption.CHANGELANELEFT, RoadOption.CHANGELANERIGHT}:
+                    return True
             
         return False
 
@@ -180,15 +182,15 @@ class CAVBehaviorPlanner(BehaviorPlanner):
 
         if self.discrete_state() == RoadOption.CHANGELANELEFT:
             if self.chg_hazard_l or self.left_change_conflict_detection():
-                self.behavior = Behavior.CHANGE_RIGHT
+                self.behavior = Behavior.KEEP_LANE
                 # Cancel the attempted lane change
-                self.path_planner.set_lane_right(self.change_distance)
+                self.path_planner.set_lane_origin(self.change_distance)
 
         elif self.discrete_state() == RoadOption.CHANGELANERIGHT:
             if self.chg_hazard_r or self.right_change_conflict_detection():
-                self.behavior = Behavior.CHANGE_LEFT
+                self.behavior = Behavior.KEEP_LANE
                 # Cancel the attempted lane change
-                self.path_planner.set_lane_left(self.change_distance)
+                self.path_planner.set_lane_origin(self.change_distance)
 
         elif (self.discrete_state() == RoadOption.LANEFOLLOW
             and self.path_planner.target_waypoint

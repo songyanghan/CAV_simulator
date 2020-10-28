@@ -152,6 +152,15 @@ class PathPlanner(object):
         self._waypoints_queue.append((right_waypt.next(distance_ahead)[0], RoadOption.CHANGELANERIGHT))
         if debug:
             print('Ego', self._vehicle.id, 'CHANGE RIGHT from lane', current_waypoint.lane_id, 'into', right_waypt.lane_id)
+            
+    def set_lane_origin(self, distance_ahead, debug=True):
+        current_waypoint = self._map.get_waypoint(self._vehicle.get_location())
+
+        self._waypoint_buffer.clear()
+        self._waypoints_queue.clear()
+        self._waypoints_queue.append((current_waypoint.next(distance_ahead)[0], RoadOption.LANEFOLLOW))
+        if debug:
+            print('Ego', self._vehicle.id, 'Set back to the original lane to avoid collisions', current_waypoint.lane_id)
 
     def set_speed(self, speed):
         self._target_speed = speed
