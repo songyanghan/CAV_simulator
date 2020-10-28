@@ -83,6 +83,7 @@ class CAVBehaviorPlanner(BehaviorPlanner):
 
         nbrs_l, nbrs_c, nbrs_r = [], [], []
         self.neighbor_left, self.neighbor_current, self.neighbor_right = [], [], []
+        self.closeneighbor_left, self.closeneighbor_current, self.closeneighbor_right = [], [], []
 
         for other in self.world.get_actors().filter("*vehicle*"):
             # must be a different vehicle
@@ -121,6 +122,9 @@ class CAVBehaviorPlanner(BehaviorPlanner):
                 if loc.distance(other_loc) < self.eps and dot(loc - other_loc, fwd) <= 0:
                     nbrs_c.append(other_fwd_speed)
                     self.neighbor_current.append(other)
+                
+                if loc.distance(other_loc) < self.close_eps:
+                    self.closeneighbor_current.append(other)
 
                 # Check if it's a hazard. Any one hazard should make the flag stay true
                 self.hazard_c = (self.hazard_c or
