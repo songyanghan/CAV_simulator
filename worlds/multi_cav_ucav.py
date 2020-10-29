@@ -155,7 +155,14 @@ class World(object):
         spawn_points = random.sample(spawn_points, self.num_CAVs + self.num_UCAVs)
 
         CAVs_batch, UCAVs_batch = [], []
-        blueprint = self.world.get_blueprint_library().filter('vehicle.audi.tt')[0]
+        blueprint = self.world.get_blueprint_library().filter('model3')[0]
+        
+#         # Spawn an obstacle
+#         transform = self.map.get_waypoint(carla.Location(x=172, y=-173)).transform
+#         transform.location.z = transform.location.z + 2.0
+
+#         vehicle = self.world.spawn_actor(blueprint, transform)
+#         vehicle.apply_control(carla.VehicleControl(throttle=0.0, steer=0.0))
 
         # Spawn all the CAVs
         blueprint.set_attribute('color', '255,0,0')
@@ -332,7 +339,7 @@ def main():
     argparser.add_argument(
         '-c', '--cavs',
         metavar='C',
-        default=10,
+        default=20,
         type=int,
         help='number of connected (behavior-planned) autonomous vehicles (default: 10)')
     argparser.add_argument(
