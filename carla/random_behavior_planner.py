@@ -94,12 +94,12 @@ class RandomBehaviorPlanner(BehaviorPlanner):
         if self.discrete_state() == RoadOption.CHANGELANELEFT:
             if self.chg_hazard_l:
                 # Cancel the attempted lane change
-                self.path_planner.set_lane_right(self.change_distance)
+                self.path_planner.set_lane_origin(self.change_distance)
 
         elif self.discrete_state() == RoadOption.CHANGELANERIGHT:
             if self.chg_hazard_r:
                 # Cancel the attempted lane change
-                self.path_planner.set_lane_left(self.change_distance)
+                self.path_planner.set_lane_origin(self.change_distance)
 
         elif (self.discrete_state() == RoadOption.LANEFOLLOW
             and self.path_planner.target_waypoint
