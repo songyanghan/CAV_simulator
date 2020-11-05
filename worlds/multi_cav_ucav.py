@@ -160,17 +160,17 @@ class World(object):
         spawn_points = random.sample(spawn_points, self.num_CAVs + self.num_UCAVs)
 
         CAVs_batch, UCAVs_batch = [], []
-        blueprint = self.world.get_blueprint_library().filter('vehicle.audi.tt')[0]
+        blueprint = self.world.get_blueprint_library().filter('model3')[0]
 
         # Spawn all the CAVs
-        blueprint.set_attribute('color', '255,255,0')
+        blueprint.set_attribute('color', '0,0,255')
         for i in range(0, self.num_CAVs):
             CAVs_batch.append(carla.command.SpawnActor(blueprint, spawn_points[i])
                              .then(carla.command.SetAutopilot(carla.command.FutureActor, True, 8000)))
         self.CAVs = [self.world.get_actor(response.actor_id) for response in self.client.apply_batch_sync(CAVs_batch)]
 
         # Spawn all the UCAVs
-        blueprint.set_attribute('color', '255,255,255')
+        blueprint.set_attribute('color', '0,0,255')
         for i in range(0, self.num_UCAVs):
             UCAVs_batch.append(carla.command.SpawnActor(blueprint, spawn_points[self.num_CAVs + i]))
         self.UCAVs = [self.world.get_actor(response.actor_id) for response in self.client.apply_batch_sync(UCAVs_batch)]
@@ -355,7 +355,7 @@ def main():
     argparser.add_argument(
         '-s', '--steps',
         type=int,
-        default=3000,
+        default=43000,
         help='total number of simulation steps (default: 3000)'
         )
     args = argparser.parse_args()
