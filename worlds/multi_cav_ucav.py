@@ -41,8 +41,8 @@ param_dict = {
     'theta_CR':     2.0,    # reward function threshold to switch right
     'eps':          150.0,  # [m] communication radius for connected vehicles
     'theta_a':      2.0,    # [m/s^2] "uncomfortable" acceleration threshold
-    'p_l':          0.01,   # random change left probability
-    'p_r':          0.01,   # random change right probability
+    'p_l':          0.5,   # random change left probability
+    'p_r':          0.5,   # random change right probability
     'theta_l':      4.0,    # [m] safety radius to prevent left changes
     'theta_c':      12.0,   # [m] safety cushion in front of vehicle
     'theta_r':      4.0,    # [m] safety radius to prevent right changes
@@ -171,7 +171,7 @@ class World(object):
         self.CAVs = [self.world.get_actor(response.actor_id) for response in self.client.apply_batch_sync(CAVs_batch)]
 
         # Spawn all the UCAVs
-        blueprint.set_attribute('color', '255,255,255')
+        blueprint.set_attribute('color', '0,0,255')
         for i in range(0, self.num_UCAVs):
             UCAVs_batch.append(carla.command.SpawnActor(blueprint, spawn_points[self.num_CAVs + i]))
         self.UCAVs = [self.world.get_actor(response.actor_id) for response in self.client.apply_batch_sync(UCAVs_batch)]
@@ -339,13 +339,13 @@ def main():
     argparser.add_argument(
         '-c', '--cavs',
         metavar='C',
-        default=20,
+        default=0,
         type=int,
         help='number of connected (behavior-planned) autonomous vehicles (default: 10)')
     argparser.add_argument(
         '-u', '--ucavs',
         metavar='U',
-        default=0,
+        default=30,
         type=int,
         help='number of unconnected autonomous vehicles (default: 5)')
     argparser.add_argument(
@@ -356,7 +356,7 @@ def main():
     argparser.add_argument(
         '-s', '--steps',
         type=int,
-        default=3000,
+        default=43000,
         help='total number of simulation steps (default: 3000)'
         )
     args = argparser.parse_args()

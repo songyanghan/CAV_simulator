@@ -185,16 +185,16 @@ class CAVBehaviorPlanner(BehaviorPlanner):
             return self.emergency_stop()
 
 #         if self.discrete_state() == RoadOption.CHANGELANELEFT:
-#             if self.chg_hazard_l or self.left_change_conflict_detection():
+#             if self.chg_hazard_l:
 #                 self.behavior = Behavior.KEEP_LANE
 #                 # Cancel the attempted lane change
-#                 self.path_planner.set_lane_origin(self.change_distance)
+#                 self.path_planner.set_lane_right(self.change_distance)
 
 #         elif self.discrete_state() == RoadOption.CHANGELANERIGHT:
-#             if self.chg_hazard_r or self.right_change_conflict_detection():
+#             if self.chg_hazard_r:
 #                 self.behavior = Behavior.KEEP_LANE
 #                 # Cancel the attempted lane change
-#                 self.path_planner.set_lane_origin(self.change_distance)
+#                 self.path_planner.set_lane_left(self.change_distance)
 
         elif (self.discrete_state() == RoadOption.LANEFOLLOW
             and self.path_planner.target_waypoint
@@ -204,8 +204,8 @@ class CAVBehaviorPlanner(BehaviorPlanner):
                     self.behavior = Behavior.KEEP_LANE
 
                     # Check if we can change left
-                    if (self.rCL >= self.theta_CL):
-#                         and str(self.current_waypoint.lane_change) in {'Left', 'Both'}
+                    if (self.rCL >= self.theta_CL
+                        and str(self.current_waypoint.lane_change) in {'Left', 'Both'}):
 #                         and not self.chg_hazard_l
 #                         and not self.left_change_conflict_detection()):
 
@@ -214,10 +214,10 @@ class CAVBehaviorPlanner(BehaviorPlanner):
                             self.path_planner.set_lane_left(self.change_distance)
 
                     # Check if we can change right
-                    elif (self.rCR >= self.theta_CR):
-#                           and str(self.current_waypoint.lane_change) in {'Right', 'Both'}
-#                           and not self.chg_hazard_r
-#                           and not self.right_change_conflict_detection()):
+                    elif (self.rCR >= self.theta_CR
+                           and str(self.current_waypoint.lane_change) in {'Right', 'Both'}):
+#                            and not self.chg_hazard_r
+#                            and not self.right_change_conflict_detection()):
 
                             change_lane = True
                             self.behavior = Behavior.CHANGE_RIGHT

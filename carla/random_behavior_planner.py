@@ -106,15 +106,15 @@ class RandomBehaviorPlanner(BehaviorPlanner):
             and self.switcher_step == self.Tds - 1):
 
                     # Check if we can change left
-                    if (random.uniform(0, 1) <= self.p_l):
-#                         and str(self.current_waypoint.lane_change) in {'Left', 'Both'}
+                    if (random.uniform(0, 1) <= self.p_l
+                        and str(self.current_waypoint.lane_change) in {'Left', 'Both'}):
 #                         and not self.chg_hazard_l):
 
                             self.path_planner.set_lane_left(self.change_distance)
 
                     # Check if we can change right
-                    elif (random.uniform(0, 1) <= self.p_r):
-#                           and str(self.current_waypoint.lane_change) in {'Right', 'Both'}
+                    elif (random.uniform(0, 1) <= self.p_r
+                          and str(self.current_waypoint.lane_change) in {'Right', 'Both'}):
 #                           and not self.chg_hazard_r):
 
                             self.path_planner.set_lane_right(self.change_distance)
